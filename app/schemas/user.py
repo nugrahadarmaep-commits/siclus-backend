@@ -42,3 +42,14 @@ class UserRegister(BaseModel):
     role: str = "pengemudi"
     trayek: Optional[str] = None
     bus: Optional[str] = None
+
+# ==========================================
+# 4. CETAKAN UNTUK EDIT DATA SUPIR (UPDATE)
+# ==========================================
+# Semua field bersifat opsional (Optional) karena Admin mungkin
+# hanya ingin mengubah satu data saja (misal: ganti rute trayek).
+class UserUpdate(BaseModel):
+    nama_lengkap: Optional[str] = None
+    email: Optional[EmailStr] = None
+    trayek: Optional[str] = None
+    bus: Optional[str] = None

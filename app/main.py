@@ -3,12 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.auth import router as auth_router
 from app.api.routes.laporan import router as laporan_router
 from app.api.routes.admin import router as admin_router
+from app.api.routes.driver import router as driver_router
 
 # Inisialisasi Mesin Utama
 app = FastAPI(
     title="SICLUS API",
     description="API Endpoint untuk Sistem Inspeksi & Catatan Laporan Sopir",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # note konfigur fe
@@ -24,6 +25,8 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["Autentikasi"])
 app.include_router(laporan_router, prefix="/api/laporan", tags=["Laporan Harian"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Dashboard Admin"])
+app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
+
 
 # test
 @app.get("/")

@@ -1,20 +1,35 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
-from passlib.context import CryptContext
+import bcrypt  # <-- Kita langsung pake bcrypt ori, buang passlib!
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# fungsi untuk verifikasi password
+# ==========================================
+# FUNGSI UNTUK VERIFIKASI PASSWORD LOGIN
+# ==========================================
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    # bcrypt butuh format bytes, jadi string-nya harus di-encode ke utf-8 dulu
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
-# fungsi untuk enkripsi password
+
+# ==========================================
+# FUNGSI UNTUK ENKRIPSI PASSWORD (REGISTER)
+# ==========================================
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # Bikin garam (salt) acak, lalu hash password-nya
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
 
-# fungsi untuk membuat token jwt tiket masuk
+    # Balikin jadi string biasa biar aman disimpen ke Supabase
+    return hashed.decode("utf-8")
+
+
+# ==========================================
+# FUNGSI UNTUK MEMBUAT TOKEN JWT
+# ==========================================
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
 
