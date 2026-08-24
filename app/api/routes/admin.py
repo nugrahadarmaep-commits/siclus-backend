@@ -6,6 +6,9 @@ import jwt
 import pandas as pd
 from app.core.config import settings
 from app.db.database import supabase
+from app.schemas.user import UserRegister, UserUpdate
+from app.schemas.jadwal import JadwalCreate, JadwalUpdate
+from app.core.security import get_password_hash
 
 router = APIRouter()
 security = HTTPBearer()
@@ -159,4 +162,238 @@ def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat membuat dokumen Excel: {str(e)}",
+        )
+
+
+# ==========================================
+# ENDPOINT: LIHAT SEMUA AKUN SUPIR (READ)
+# ==========================================
+@router.get("/users")
+def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
+    """
+    Menarik seluruh daftar pengguna yang memiliki role sebagai 'pengemudi'.
+    """
+    try:
+        response = (
+            supabase.table("users")
+            .select("id, nama, email, trayek, bus, foto_profil")
+            .eq("role", "pengemudi")
+            .execute()
+        )
+
+        return {
+            "pesan": "Daftar pengemudi berhasil ditarik.",
+            "total": len(response.data),
+            "data": response.data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+
+
+# ==========================================
+# ENDPOINT: TAMBAH AKUN SUPIR BARU (CREATE)
+# ==========================================
+@router.post("/users")
+def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_admin)):
+    """
+    Mendaftarkan akun pengemudi baru. Kata sandi akan dienkripsi (hashing)
+    sebelum disimpan ke dalam database.
+    """
+    try:
+        # Enkripsi password sebelum masuk database
+        hashed_pw = get_password_hash(data.password)
+
+        response = (
+            supabase.table("users")
+            .insert(
+                {
+                    "id": data.id,
+                    "nama": data.nama_lengkap,  # Mapping dari schema ke kolom database
+                    "email": data.email,
+                    "password": hashed_pw,
+                    "role": data.role,
+                    "trayek": data.trayek,
+                    "bus": data.bus,
+                }
+            )
+            .execute()
+        )
+
+        # Hapus tampilan password di response demi keamanan
+        user_terdaftar = response.data[0]
+        user_terdaftar.pop("password", None)
+
+        return {"pesan": "Akun pengemudi berhasil dibuat.", "data": user_terdaftar}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menambah supir: {str(e)}")
+
+
+# ==========================================
+# ENDPOINT: EDIT DATA SUPIR (UPDATE)
+# ==========================================
+@router.put("/users/{user_id}")
+def edit_data_supir(
+    user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
+):
+    """
+    Memperbarui data penugasan atau profil pengemudi berdasarkan ID.
+    """
+    try:
+        # Hanya ambil data yang diisi oleh Admin (tidak None)
+        update_data = {}
+        if data.nama_lengkap:
+            update_data["nama"] = data.nama_lengkap
+        if data.email:
+            update_data["email"] = data.email
+        if data.trayek:
+            update_data["trayek"] = data.trayek
+        if data.bus:
+            update_data["bus"] = data.bus
+
+        if not update_data:
+            raise HTTPException(
+                status_code=400, detail="Tidak ada data yang dikirim untuk diubah."
+            )
+
+        response = (
+            supabase.table("users").update(update_data).eq("id", user_id).execute()
+        )
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
+            )
+
+        return {
+            "pesan": "Data pengemudi berhasil diperbarui.",
+            "data": response.data[0],
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal memperbarui data: {str(e)}")
+
+
+# ==========================================
+# ENDPOINT: HAPUS AKUN SUPIR (DELETE)
+# ==========================================
+@router.delete("/users/{user_id}")
+def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
+    """
+    Menghapus akun pengemudi dari sistem secara permanen berdasarkan ID.
+    """
+    try:
+        response = supabase.table("users").delete().eq("id", user_id).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
+            )
+
+        return {
+            "pesan": f"Akun pengemudi dengan ID {user_id} berhasil dihapus permanen."
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menghapus supir: {str(e)}")
+
+
+# ==========================================
+# ENDPOINT: LIHAT SEMUA JADWAL (READ)
+# ==========================================
+@router.get("/jadwal")
+def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
+    """
+    Menarik semua data batas waktu operasional (cut-off time) dari seluruh trayek.
+    """
+    try:
+        response = supabase.table("schedules").select("*").order("trayek").execute()
+        return {
+            "pesan": "Daftar jadwal operasional berhasil ditarik.",
+            "total": len(response.data),
+            "data": response.data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+
+
+# ==========================================
+# ENDPOINT: BIKIN JADWAL BARU (CREATE)
+# ==========================================
+@router.post("/jadwal")
+def tambah_jadwal_baru(
+    data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
+):
+    """
+    Menambahkan aturan batas waktu baru untuk sebuah trayek dan sesi tertentu.
+    """
+    try:
+        response = (
+            supabase.table("schedules")
+            .insert(
+                {
+                    "trayek": data.trayek,
+                    "tipe_sesi": data.tipe_sesi.upper(),
+                    "batas_keluar_dishub": data.batas_keluar_dishub,
+                    "batas_tiba_start": data.batas_tiba_start,
+                }
+            )
+            .execute()
+        )
+
+        return {
+            "pesan": "Jadwal operasional baru berhasil ditambahkan.",
+            "data": response.data[0],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menambah jadwal: {str(e)}")
+
+
+# ==========================================
+# ENDPOINT: EDIT JADWAL (UPDATE)
+# ==========================================
+@router.put("/jadwal/{jadwal_id}")
+def edit_jadwal(
+    jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
+):
+    """
+    Memperbarui batas waktu toleransi pada jadwal yang sudah ada berdasarkan ID.
+    """
+    try:
+        update_data = {}
+        if data.batas_keluar_dishub:
+            update_data["batas_keluar_dishub"] = data.batas_keluar_dishub
+        if data.batas_tiba_start:
+            update_data["batas_tiba_start"] = data.batas_tiba_start
+
+        if not update_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Tidak ada data waktu yang dikirim untuk diubah.",
+            )
+
+        response = (
+            supabase.table("schedules")
+            .update(update_data)
+            .eq("id", jadwal_id)
+            .execute()
+        )
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404, detail=f"Jadwal dengan ID {jadwal_id} tidak ditemukan."
+            )
+
+        return {
+            "pesan": "Batas waktu jadwal berhasil diperbarui.",
+            "data": response.data[0],
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Gagal memperbarui jadwal: {str(e)}"
         )
