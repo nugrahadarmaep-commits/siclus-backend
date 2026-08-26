@@ -5,9 +5,7 @@ import bcrypt  # <-- Kita langsung pake bcrypt ori, buang passlib!
 from app.core.config import settings
 
 
-# ==========================================
-# FUNGSI UNTUK VERIFIKASI PASSWORD LOGIN
-# ==========================================
+# ─── FUNGSI KEAMANAN: VERIFIKASI PASSWORD LOGIN ───────────────────────
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     # bcrypt butuh format bytes, jadi string-nya harus di-encode ke utf-8 dulu
     return bcrypt.checkpw(
@@ -15,9 +13,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     )
 
 
-# ==========================================
-# FUNGSI UNTUK ENKRIPSI PASSWORD (REGISTER)
-# ==========================================
+# ─── FUNGSI KEAMANAN: ENKRIPSI PASSWORD (REGISTER) ────────────────────
 def get_password_hash(password: str) -> str:
     # Bikin garam (salt) acak, lalu hash password-nya
     salt = bcrypt.gensalt()
@@ -27,9 +23,7 @@ def get_password_hash(password: str) -> str:
     return hashed.decode("utf-8")
 
 
-# ==========================================
-# FUNGSI UNTUK MEMBUAT TOKEN JWT
-# ==========================================
+# ─── FUNGSI KEAMANAN: PEMBUATAN TOKEN JWT ─────────────────────────────
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
 

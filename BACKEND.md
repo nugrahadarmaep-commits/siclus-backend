@@ -1,10 +1,97 @@
-# SICLUS Backend Codebase
+# SICLUS Backend - Source Code Documentation
 
-Dokumentasi seluruh file dan kode sumber project **`siclus-backend`** murni tanpa modifikasi.
+Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** tanpa modifikasi.
 
 ---
 
-## 1. `pyproject.toml`
+## 📁 Struktur Direktori Proyek
+
+```text
+siclus-backend/
+├── .env.example
+├── .gitignore
+├── .python-version
+├── pyproject.toml
+├── README.md
+└── app/
+    ├── __init__.py
+    ├── main.py
+    ├── api/
+    │   ├── __init__.py
+    │   └── routes/
+    │       ├── __init__.py
+    │       ├── admin.py
+    │       ├── auth.py
+    │       ├── driver.py
+    │       └── laporan.py
+    ├── core/
+    │   ├── __init__.py
+    │   ├── config.py
+    │   └── security.py
+    ├── db/
+    │   ├── __init__.py
+    │   └── database.py
+    ├── schemas/
+    │   ├── __init__.py
+    │   ├── inspeksi.py
+    │   ├── jadwal.py
+    │   ├── laporan.py
+    │   ├── perjalanan.py
+    │   └── user.py
+    └── services/
+        ├── __init__.py
+        ├── auth_service.py
+        └── laporan_service.py
+```
+
+---
+
+## 📑 Daftar Isi
+
+### ⚙️ Konfigurasi & Lingkungan
+- [`pyproject.toml`](#pyprojecttoml)
+- [`.env.example`](#envexample)
+- [`.gitignore`](#gitignore)
+- [`.python-version`](#python-version)
+
+### 🚀 Entry Point Aplikasi
+- [`app/__init__.py`](#app__init__py)
+- [`app/main.py`](#appmainpy)
+
+### 🛡️ Core & Keamanan
+- [`app/core/__init__.py`](#appcore__init__py)
+- [`app/core/config.py`](#appcoreconfigpy)
+- [`app/core/security.py`](#appcoresecuritypy)
+
+### 🗄️ Database
+- [`app/db/__init__.py`](#appdb__init__py)
+- [`app/db/database.py`](#appdbdatabasepy)
+
+### 📋 Schemas (Pydantic)
+- [`app/schemas/__init__.py`](#appschemas__init__py)
+- [`app/schemas/user.py`](#appschemasuserpy)
+- [`app/schemas/inspeksi.py`](#appschemasinspeksipy)
+- [`app/schemas/jadwal.py`](#appschemasjadwalpy)
+- [`app/schemas/perjalanan.py`](#appschemasperjalananpy)
+- [`app/schemas/laporan.py`](#appschemaslaporanpy)
+
+### ⚙️ Services (Business Logic)
+- [`app/services/__init__.py`](#appservices__init__py)
+- [`app/services/auth_service.py`](#appservicesauth_servicepy)
+- [`app/services/laporan_service.py`](#appserviceslaporan_servicepy)
+
+### 🌐 API Routes (Endpoints)
+- [`app/api/__init__.py`](#appapi__init__py)
+- [`app/api/routes/__init__.py`](#appapiroutes__init__py)
+- [`app/api/routes/auth.py`](#appapiroutesauthpy)
+- [`app/api/routes/admin.py`](#appapiroutesadminpy)
+- [`app/api/routes/driver.py`](#appapiroutesdriverpy)
+- [`app/api/routes/laporan.py`](#appapirouteslaporanpy)
+
+---
+
+## `pyproject.toml`
+
 ```toml
 [project]
 name = "siclus-backend"
@@ -32,11 +119,134 @@ dependencies = [
 
 [tool.uv]
 package = false
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 2. `app/main.py`
+## `.env.example`
+
+```env
+# Supabase Configuration
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-supabase-anon-or-service-key
+
+# JWT Security Configuration
+SECRET_KEY=your-jwt-secret-key-here
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `.gitignore`
+
+```gitignore
+# ==========================================
+# 1. Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ==========================================
+# 2. Virtual Environments
+# ==========================================
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.python-version-backup
+
+# ==========================================
+# 3. Python Bytecode & Cache
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ==========================================
+# 4. Testing, Linting & Coverage
+# ==========================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ==========================================
+# 5. Build, Distribution & Packaging
+# ==========================================
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ==========================================
+# 6. IDE, Code Editor & Tools
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ==========================================
+# 7. OS Generated & Temporary Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+*.log
+logs/
+*.tmp
+*.bak
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `.python-version`
+
+```
+3.14
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/main.py`
+
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,11 +282,25 @@ app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
 @app.get("/")
 def root():
     return {"status": "mesin siclus berjalan!"}
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 3. `app/core/config.py`
+## `app/core/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/core/config.py`
+
 ```python
 import os
 from dotenv import load_dotenv
@@ -96,29 +320,42 @@ class Settings:
 
 
 settings = Settings()
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 4. `app/core/security.py`
+## `app/core/security.py`
+
 ```python
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
-from passlib.context import CryptContext
+import bcrypt  # <-- Kita langsung pake bcrypt ori, buang passlib!
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# fungsi untuk verifikasi password
+# ─── FUNGSI KEAMANAN: VERIFIKASI PASSWORD LOGIN ───────────────────────
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    # bcrypt butuh format bytes, jadi string-nya harus di-encode ke utf-8 dulu
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
-# fungsi untuk enkripsi password
+
+# ─── FUNGSI KEAMANAN: ENKRIPSI PASSWORD (REGISTER) ────────────────────
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # Bikin garam (salt) acak, lalu hash password-nya
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
 
-# fungsi untuk membuat token jwt tiket masuk
+    # Balikin jadi string biasa biar aman disimpen ke Supabase
+    return hashed.decode("utf-8")
+
+
+# ─── FUNGSI KEAMANAN: PEMBUATAN TOKEN JWT ─────────────────────────────
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
 
@@ -138,11 +375,25 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     )
 
     return encoded_jwt
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 5. `app/db/database.py`
+## `app/db/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/db/database.py`
+
 ```python
 import os
 from dotenv import load_dotenv
@@ -160,19 +411,31 @@ if not API_URL or not API_KEY:
 
 # 4. Bikin jembatan koneksinya!
 supabase: Client = create_client(API_URL, API_KEY)
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 6. `app/schemas/user.py`
+## `app/schemas/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/schemas/user.py`
+
 ```python
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-# ==========================================
-# 1. CETAKAN DATA UNTUK LOGIN (REQUEST)
-# ==========================================
+# ─── SCHEMA: DATA LOGIN PENGGUNA (REQUEST) ────────────────────────────
 # Skema ini memastikan data yang dikirim dari Frontend (Cevin)
 # wajib memiliki format email yang valid dan password.
 class UserLogin(BaseModel):
@@ -180,9 +443,7 @@ class UserLogin(BaseModel):
     password: str
 
 
-# ==========================================
-# 2. CETAKAN PROFIL PENGGUNA (RESPONSE)
-# ==========================================
+# ─── SCHEMA: PROFIL PENGGUNA (RESPONSE) ───────────────────────────────
 # Skema ini mengatur data apa saja yang boleh dikembalikan ke Frontend.
 # Sistem secara ketat menghilangkan password demi keamanan.
 class UserResponse(BaseModel):
@@ -198,9 +459,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ==========================================
-# 3. CETAKAN UNTUK DAFTAR SUPIR BARU (REGISTER)
-# ==========================================
+# ─── SCHEMA: REGISTRASI SUPIR BARU (REGISTER) ─────────────────────────
 # Skema ini bakal dipake sama Admin buat masukin data supir baru ke sistem
 class UserRegister(BaseModel):
     id: str
@@ -210,31 +469,23 @@ class UserRegister(BaseModel):
     role: str = "pengemudi"
     trayek: Optional[str] = None
     bus: Optional[str] = None
+
+# ─── SCHEMA: EDIT DATA SUPIR (UPDATE) ─────────────────────────────────
+# Semua field bersifat opsional (Optional) karena Admin mungkin
+# hanya ingin mengubah satu data saja (misal: ganti rute trayek).
+class UserUpdate(BaseModel):
+    nama_lengkap: Optional[str] = None
+    email: Optional[EmailStr] = None
+    trayek: Optional[str] = None
+    bus: Optional[str] = None
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 7. `app/schemas/laporan.py`
-```python
-from datetime import date
-from pydantic import BaseModel
+## `app/schemas/inspeksi.py`
 
-
-# ==========================================
-# 1. CETAKAN UTAMA LAPORAN HARIAN (MAP PLASTIK)
-# ==========================================
-# Skema ini adalah cangkang utama untuk hari tersebut.
-# ID Supir tidak perlu dikirim dari Frontend karena akan diambil otomatis
-# dari tiket JWT (Token) demi keamanan.
-class LaporanHarianCreate(BaseModel):
-    tanggal: date
-    trayek: str
-    bus: str
-```
-
----
-
-## 8. `app/schemas/inspeksi.py`
 ```python
 from typing import Optional
 from pydantic import BaseModel
@@ -254,46 +505,110 @@ class InspeksiCreate(BaseModel):
 
     # opsional catatan kerusakan
     catatan: Optional[str] = None
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 9. `app/schemas/perjalanan.py`
+## `app/schemas/jadwal.py`
+
 ```python
 from typing import Optional
 from pydantic import BaseModel
 
-# ==========================================
-# 1. CETAKAN DATA SESI PERJALANAN (PAGI / SIANG)
-# ==========================================
+
+# ─── SCHEMA: PEMBUATAN JADWAL BARU (CREATE) ───────────────────────────
+class JadwalCreate(BaseModel):
+    trayek: str
+    tipe_sesi: str  # Wajib isi 'PAGI' atau 'SIANG'
+    batas_keluar_dishub: str  # Format string, contoh: '05:45'
+    batas_tiba_start: str  # Format string, contoh: '06:15'
+
+
+# ─── SCHEMA: PEMBARUAN JADWAL (UPDATE) ────────────────────────────────
+# Trayek dan sesi kaga usah diedit, Admin cukup ngedit jamnya aja.
+class JadwalUpdate(BaseModel):
+    batas_keluar_dishub: Optional[str] = None
+    batas_tiba_start: Optional[str] = None
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/schemas/perjalanan.py`
+
+```python
+from typing import Optional
+from pydantic import BaseModel
+
+# ─── SCHEMA: DATA SESI PERJALANAN (PAGI / SIANG) ──────────────────────
 # Skema ini akan dipakai dua kali sehari (Sesi PAGI dan Sesi SIANG).
 # Tipe datanya string untuk jam (contoh: "05:50 WIB") agar sinkron dengan Frontend.
 class TripSessionCreate(BaseModel):
     tipe_sesi: str  # Wajib diisi "PAGI" atau "SIANG"
     
-    # --- DATA BERANGKAT DARI DISHUB ---
+    # ─── DATA BERANGKAT DARI DISHUB ───
     jam_berangkat_kantor: Optional[str] = None 
     km_berangkat_kantor: Optional[int] = None
     
-    # --- DATA TIBA DI TITIK START (TERMINAL/SEKOLAH) ---
+    # ─── DATA TIBA DI TITIK START (TERMINAL/SEKOLAH) ───
     jam_berangkat_start: Optional[str] = None
     km_berangkat_start: Optional[int] = None
     
-    # --- DATA TIBA DI TITIK FINISH (SEKOLAH/TERMINAL) ---
+    # ─── DATA TIBA DI TITIK FINISH (SEKOLAH/TERMINAL) ───
     jam_tiba_finish: Optional[str] = None
     km_tiba_finish: Optional[int] = None
     
-    # --- DATA JUMLAH PENUMPANG ---
+    # ─── DATA JUMLAH PENUMPANG ───
     jumlah_penumpang: Optional[int] = 0
     
-    # --- DATA KEMBALI KE DISHUB ---
+    # ─── DATA KEMBALI KE DISHUB ───
     jam_tiba_kantor: Optional[str] = None
     km_tiba_kantor: Optional[int] = None
 ```
 
+[Kembali ke Daftar Isi](#-daftar-isi)
+
 ---
 
-## 10. `app/services/auth_service.py`
+## `app/schemas/laporan.py`
+
+```python
+from datetime import date
+from pydantic import BaseModel
+
+
+# ─── SCHEMA: INISIALISASI LAPORAN HARIAN (CREATE) ─────────────────────
+# Skema ini adalah cangkang utama untuk hari tersebut.
+# ID Supir tidak perlu dikirim dari Frontend karena akan diambil otomatis
+# dari tiket JWT (Token) demi keamanan.
+class LaporanHarianCreate(BaseModel):
+    tanggal: date
+    trayek: str
+    bus: str
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/services/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/services/auth_service.py`
+
 ```python
 from fastapi import HTTPException, status
 from app.schemas.user import UserLogin
@@ -350,11 +665,15 @@ def proses_login_supir(data_login: UserLogin):
             "bus": db_user["bus"],
         },
     }
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 11. `app/services/laporan_service.py`
+## `app/services/laporan_service.py`
+
 ```python
 from fastapi import HTTPException, status
 from app.db.database import supabase
@@ -422,9 +741,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
 
 # fungsi untuk menyimpan sesi perjalanan
 def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
-    # ==========================================
-    # LOGIKA EVALUASI KETERLAMBATAN OTOMATIS
-    # ==========================================
+    # ─── LOGIKA: EVALUASI KETERLAMBATAN OTOMATIS ──────────────────────
     status_telat = "TEPAT WAKTU"
 
     if data.jam_berangkat_start:
@@ -440,9 +757,7 @@ def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
             if jam_bersih > "15:00":
                 status_telat = "TERLAMBAT"
 
-    # ==========================================
-    # PROSES PENYIMPANAN DATA KE DATABASE
-    # ==========================================
+    # ─── PROSES: PENYIMPANAN DATA KE DATABASE ─────────────────────────
     try:
         response = (
             supabase.table("trip_sessions")
@@ -472,11 +787,35 @@ def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat merekam data sesi perjalanan: {str(e)}",
         )
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 12. `app/api/routes/auth.py`
+## `app/api/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/api/routes/__init__.py`
+
+```python
+
+```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
+
+---
+
+## `app/api/routes/auth.py`
+
 ```python
 from fastapi import APIRouter
 from app.schemas.user import UserLogin
@@ -488,165 +827,17 @@ router = APIRouter()
 def login(data: UserLogin):
     hasil_login = proses_login_supir(data)
     return hasil_login
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 13. `app/api/routes/laporan.py`
+## `app/api/routes/admin.py`
+
 ```python
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
-import time
 
-from app.schemas.laporan import LaporanHarianCreate
-from app.schemas.inspeksi import InspeksiCreate
-from app.schemas.perjalanan import TripSessionCreate
-from app.services.laporan_service import (
-    create_laporan_harian,
-    create_inspeksi_kendaraan,
-    create_sesi_perjalanan,
-)
-from app.core.config import settings
-from app.db.database import supabase
-
-router = APIRouter()
-security = HTTPBearer()
-
-
-# ==========================================
-# FUNGSI KEAMANAN: VERIFIKASI TOKEN JWT
-# ==========================================
-def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    Fungsi otorisasi yang dieksekusi sebelum endpoint utama diproses.
-    Bertugas melakukan dekode JWT dan memvalidasi kredensial pengguna.
-    """
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        email_supir = payload.get("sub")
-
-        if email_supir is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Kredensial tidak valid. Payload token kosong.",
-            )
-
-        # Mengembalikan email pengemudi jika autentikasi berhasil
-        return email_supir
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sesi telah kedaluwarsa. Silakan login kembali.",
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token autentikasi tidak valid atau telah dimanipulasi.",
-        )
-
-
-# ==========================================
-# ENDPOINT: INISIALISASI LAPORAN HARIAN
-# ==========================================
-@router.post("/mulai")
-def mulai_laporan(
-    data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
-):
-    """
-    Membuat entri data awal untuk laporan harian operasional pengemudi.
-    """
-    hasil = create_laporan_harian(data, email_supir)
-    return hasil
-
-
-# ==========================================
-# ENDPOINT: PENGISIAN DATA INSPEKSI
-# ==========================================
-@router.post("/inspeksi")
-def inspeksi_kendaraan(
-    laporan_id: str, data: InspeksiCreate, email_supir: str = Depends(verifikasi_token)
-):
-    """
-    Menyimpan hasil pemeriksaan kelaikan kondisi fisik kendaraan.
-    """
-    hasil = create_inspeksi_kendaraan(laporan_id, data)
-    return hasil
-
-
-# ==========================================
-# ENDPOINT: PENGISIAN SESI PERJALANAN
-# ==========================================
-@router.post("/sesi")
-def sesi_perjalanan(
-    laporan_id: str,
-    data: TripSessionCreate,
-    email_supir: str = Depends(verifikasi_token),
-):
-    """
-    Merekam data odometer dan waktu operasi untuk rute perjalanan pengemudi.
-    """
-    hasil = create_sesi_perjalanan(laporan_id, data)
-    return hasil
-
-
-# ==========================================
-# ENDPOINT: UNGGAH FOTO KEHADIRAN (SELFIE)
-# ==========================================
-@router.post("/upload-selfie")
-async def upload_selfie(
-    foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
-):
-    """
-    Menerima file gambar (selfie) untuk validasi kehadiran,
-    mengunggahnya ke infrastruktur penyimpanan (Storage),
-    dan mengembalikan URL akses publik.
-    """
-    try:
-        ekstensi = foto.filename.split(".")[-1].lower()
-        if ekstensi not in ["jpg", "jpeg", "png"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, atau PNG.",
-            )
-
-        nama_prefix = email_supir.split("@")[0]
-        nama_file_baru = f"{nama_prefix}_{int(time.time())}.{ekstensi}"
-
-        isi_gambar = await foto.read()
-
-        response = supabase.storage.from_("selfie_driver").upload(
-            file=isi_gambar,
-            path=nama_file_baru,
-            file_options={"content-type": foto.content_type},
-        )
-
-        url_publik = supabase.storage.from_("selfie_driver").get_public_url(
-            nama_file_baru
-        )
-
-        return {
-            "pesan": "Foto validasi kehadiran berhasil diunggah.",
-            "url_foto": url_publik,
-        }
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat mengunggah foto: {str(e)}",
-        )
-```
-
----
-
-## 14. `app/api/routes/admin.py`
-```python
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -655,14 +846,15 @@ import jwt
 import pandas as pd
 from app.core.config import settings
 from app.db.database import supabase
+from app.schemas.user import UserRegister, UserUpdate
+from app.schemas.jadwal import JadwalCreate, JadwalUpdate
+from app.core.security import get_password_hash
 
 router = APIRouter()
 security = HTTPBearer()
 
 
-# ==========================================
-# FUNGSI KEAMANAN: VERIFIKASI HAK AKSES ADMIN
-# ==========================================
+# ─── FUNGSI KEAMANAN: VERIFIKASI HAK AKSES ADMIN ──────────────────────
 def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
     Fungsi otorisasi khusus (Role-Based Access Control) untuk Administrator.
@@ -699,9 +891,7 @@ def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# ==========================================
-# ENDPOINT: DASHBOARD ADMIN (TESTING)
-# ==========================================
+# ─── ENDPOINT: DASHBOARD ADMIN (TESTING) ──────────────────────────────
 @router.get("/dashboard")
 def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -710,9 +900,7 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
     return {"pesan": f"Selamat datang di Dasbor VIP, {email_admin}!"}
 
 
-# ==========================================
-# ENDPOINT: REKAPITULASI DATA (HALAMAN ADMIN)
-# ==========================================
+# ─── ENDPOINT: REKAPITULASI DATA (HALAMAN ADMIN) ──────────────────────
 @router.get("/rekap")
 def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -741,9 +929,7 @@ def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
         )
 
 
-# ==========================================
-# ENDPOINT: UNDUH LAPORAN EXCEL (.xlsx)
-# ==========================================
+# ─── ENDPOINT: UNDUH LAPORAN EXCEL (.xlsx) ────────────────────────────
 @router.get("/export-excel")
 def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -809,11 +995,235 @@ def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat membuat dokumen Excel: {str(e)}",
         )
+
+
+# ─── ENDPOINT: LIHAT SEMUA AKUN SUPIR (READ) ──────────────────────────
+@router.get("/users")
+def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
+    """
+    Menarik seluruh daftar pengguna yang memiliki role sebagai 'pengemudi'.
+    """
+    try:
+        response = (
+            supabase.table("users")
+            .select("id, nama, email, trayek, bus, foto_profil")
+            .eq("role", "pengemudi")
+            .execute()
+        )
+
+        return {
+            "pesan": "Daftar pengemudi berhasil ditarik.",
+            "total": len(response.data),
+            "data": response.data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+
+
+# ─── ENDPOINT: TAMBAH AKUN SUPIR BARU (CREATE) ────────────────────────
+@router.post("/users")
+def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_admin)):
+    """
+    Mendaftarkan akun pengemudi baru. Kata sandi akan dienkripsi (hashing)
+    sebelum disimpan ke dalam database.
+    """
+    try:
+        # Enkripsi password sebelum masuk database
+        hashed_pw = get_password_hash(data.password)
+
+        response = (
+            supabase.table("users")
+            .insert(
+                {
+                    "id": data.id,
+                    "nama": data.nama_lengkap,  # Mapping dari schema ke kolom database
+                    "email": data.email,
+                    "password": hashed_pw,
+                    "role": data.role,
+                    "trayek": data.trayek,
+                    "bus": data.bus,
+                }
+            )
+            .execute()
+        )
+
+        # Hapus tampilan password di response demi keamanan
+        user_terdaftar = response.data[0]
+        user_terdaftar.pop("password", None)
+
+        return {"pesan": "Akun pengemudi berhasil dibuat.", "data": user_terdaftar}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menambah supir: {str(e)}")
+
+
+# ─── ENDPOINT: EDIT DATA SUPIR (UPDATE) ───────────────────────────────
+@router.put("/users/{user_id}")
+def edit_data_supir(
+    user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
+):
+    """
+    Memperbarui data penugasan atau profil pengemudi berdasarkan ID.
+    """
+    try:
+        # Hanya ambil data yang diisi oleh Admin (tidak None)
+        update_data = {}
+        if data.nama_lengkap:
+            update_data["nama"] = data.nama_lengkap
+        if data.email:
+            update_data["email"] = data.email
+        if data.trayek:
+            update_data["trayek"] = data.trayek
+        if data.bus:
+            update_data["bus"] = data.bus
+
+        if not update_data:
+            raise HTTPException(
+                status_code=400, detail="Tidak ada data yang dikirim untuk diubah."
+            )
+
+        response = (
+            supabase.table("users").update(update_data).eq("id", user_id).execute()
+        )
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
+            )
+
+        return {
+            "pesan": "Data pengemudi berhasil diperbarui.",
+            "data": response.data[0],
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal memperbarui data: {str(e)}")
+
+
+# ─── ENDPOINT: HAPUS AKUN SUPIR (DELETE) ──────────────────────────────
+@router.delete("/users/{user_id}")
+def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
+    """
+    Menghapus akun pengemudi dari sistem secara permanen berdasarkan ID.
+    """
+    try:
+        response = supabase.table("users").delete().eq("id", user_id).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
+            )
+
+        return {
+            "pesan": f"Akun pengemudi dengan ID {user_id} berhasil dihapus permanen."
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menghapus supir: {str(e)}")
+
+
+# ─── ENDPOINT: LIHAT SEMUA JADWAL (READ) ──────────────────────────────
+@router.get("/jadwal")
+def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
+    """
+    Menarik semua data batas waktu operasional (cut-off time) dari seluruh trayek.
+    """
+    try:
+        response = supabase.table("schedules").select("*").order("trayek").execute()
+        return {
+            "pesan": "Daftar jadwal operasional berhasil ditarik.",
+            "total": len(response.data),
+            "data": response.data,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+
+
+# ─── ENDPOINT: BIKIN JADWAL BARU (CREATE) ─────────────────────────────
+@router.post("/jadwal")
+def tambah_jadwal_baru(
+    data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
+):
+    """
+    Menambahkan aturan batas waktu baru untuk sebuah trayek dan sesi tertentu.
+    """
+    try:
+        response = (
+            supabase.table("schedules")
+            .insert(
+                {
+                    "trayek": data.trayek,
+                    "tipe_sesi": data.tipe_sesi.upper(),
+                    "batas_keluar_dishub": data.batas_keluar_dishub,
+                    "batas_tiba_start": data.batas_tiba_start,
+                }
+            )
+            .execute()
+        )
+
+        return {
+            "pesan": "Jadwal operasional baru berhasil ditambahkan.",
+            "data": response.data[0],
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menambah jadwal: {str(e)}")
+
+
+# ─── ENDPOINT: EDIT JADWAL (UPDATE) ───────────────────────────────────
+@router.put("/jadwal/{jadwal_id}")
+def edit_jadwal(
+    jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
+):
+    """
+    Memperbarui batas waktu toleransi pada jadwal yang sudah ada berdasarkan ID.
+    """
+    try:
+        update_data = {}
+        if data.batas_keluar_dishub:
+            update_data["batas_keluar_dishub"] = data.batas_keluar_dishub
+        if data.batas_tiba_start:
+            update_data["batas_tiba_start"] = data.batas_tiba_start
+
+        if not update_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Tidak ada data waktu yang dikirim untuk diubah.",
+            )
+
+        response = (
+            supabase.table("schedules")
+            .update(update_data)
+            .eq("id", jadwal_id)
+            .execute()
+        )
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404, detail=f"Jadwal dengan ID {jadwal_id} tidak ditemukan."
+            )
+
+        return {
+            "pesan": "Batas waktu jadwal berhasil diperbarui.",
+            "data": response.data[0],
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Gagal memperbarui jadwal: {str(e)}"
+        )
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 15. `app/api/routes/driver.py`
+## `app/api/routes/driver.py`
+
 ```python
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -828,9 +1238,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ==========================================
-# FUNGSI KEAMANAN: VERIFIKASI TOKEN PENGEMUDI
-# ==========================================
+# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN PENGEMUDI ──────────────────────
 def verifikasi_pengemudi(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
@@ -865,9 +1273,7 @@ def verifikasi_pengemudi(
         )
 
 
-# ==========================================
-# ENDPOINT: DATA PROFIL PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: DATA PROFIL PENGEMUDI ──────────────────────────────────
 @router.get("/profil")
 def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -902,9 +1308,7 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==========================================
-# ENDPOINT: UBAH FOTO PROFIL PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: UBAH FOTO PROFIL PENGEMUDI ─────────────────────────────
 @router.put("/profil/foto")
 async def update_foto_profil(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_pengemudi)
@@ -955,9 +1359,7 @@ async def update_foto_profil(
         )
 
 
-# ==========================================
-# ENDPOINT: RIWAYAT PERJALANAN PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: RIWAYAT PERJALANAN PENGEMUDI ───────────────────────────
 @router.get("/riwayat")
 def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -991,9 +1393,7 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==========================================
-# ENDPOINT: JADWAL OPERASIONAL PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: JADWAL OPERASIONAL PENGEMUDI ───────────────────────────
 @router.get("/jadwal")
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -1042,97 +1442,156 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat menarik jadwal operasional: {str(e)}",
         )
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## 16. `.env.example`
-```env
-# Supabase Configuration
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-supabase-anon-or-service-key
+## `app/api/routes/laporan.py`
 
-# JWT Security Configuration
-SECRET_KEY=your-jwt-secret-key-here
+```python
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+import time
+
+from app.schemas.laporan import LaporanHarianCreate
+from app.schemas.inspeksi import InspeksiCreate
+from app.schemas.perjalanan import TripSessionCreate
+from app.services.laporan_service import (
+    create_laporan_harian,
+    create_inspeksi_kendaraan,
+    create_sesi_perjalanan,
+)
+from app.core.config import settings
+from app.db.database import supabase
+
+router = APIRouter()
+security = HTTPBearer()
+
+
+# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN JWT ────────────────────────────
+def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Fungsi otorisasi yang dieksekusi sebelum endpoint utama diproses.
+    Bertugas melakukan dekode JWT dan memvalidasi kredensial pengguna.
+    """
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        email_supir = payload.get("sub")
+
+        if email_supir is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Kredensial tidak valid. Payload token kosong.",
+            )
+
+        # Mengembalikan email pengemudi jika autentikasi berhasil
+        return email_supir
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sesi telah kedaluwarsa. Silakan login kembali.",
+        )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token autentikasi tidak valid atau telah dimanipulasi.",
+        )
+
+
+# ─── ENDPOINT: INISIALISASI LAPORAN HARIAN ────────────────────────────
+@router.post("/mulai")
+def mulai_laporan(
+    data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
+):
+    """
+    Membuat entri data awal untuk laporan harian operasional pengemudi.
+    """
+    hasil = create_laporan_harian(data, email_supir)
+    return hasil
+
+
+# ─── ENDPOINT: PENGISIAN DATA INSPEKSI ────────────────────────────────
+@router.post("/inspeksi")
+def inspeksi_kendaraan(
+    laporan_id: str, data: InspeksiCreate, email_supir: str = Depends(verifikasi_token)
+):
+    """
+    Menyimpan hasil pemeriksaan kelaikan kondisi fisik kendaraan.
+    """
+    hasil = create_inspeksi_kendaraan(laporan_id, data)
+    return hasil
+
+
+# ─── ENDPOINT: PENGISIAN SESI PERJALANAN ──────────────────────────────
+@router.post("/sesi")
+def sesi_perjalanan(
+    laporan_id: str,
+    data: TripSessionCreate,
+    email_supir: str = Depends(verifikasi_token),
+):
+    """
+    Merekam data odometer dan waktu operasi untuk rute perjalanan pengemudi.
+    """
+    hasil = create_sesi_perjalanan(laporan_id, data)
+    return hasil
+
+
+# ─── ENDPOINT: UNGGAH FOTO KEHADIRAN (SELFIE) ─────────────────────────
+@router.post("/upload-selfie")
+async def upload_selfie(
+    foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
+):
+    """
+    Menerima file gambar (selfie) untuk validasi kehadiran,
+    mengunggahnya ke infrastruktur penyimpanan (Storage),
+    dan mengembalikan URL akses publik.
+    """
+    try:
+        ekstensi = foto.filename.split(".")[-1].lower()
+        if ekstensi not in ["jpg", "jpeg", "png"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, atau PNG.",
+            )
+
+        nama_prefix = email_supir.split("@")[0]
+        nama_file_baru = f"{nama_prefix}_{int(time.time())}.{ekstensi}"
+
+        isi_gambar = await foto.read()
+
+        response = supabase.storage.from_("selfie_driver").upload(
+            file=isi_gambar,
+            path=nama_file_baru,
+            file_options={"content-type": foto.content_type},
+        )
+
+        url_publik = supabase.storage.from_("selfie_driver").get_public_url(
+            nama_file_baru
+        )
+
+        return {
+            "pesan": "Foto validasi kehadiran berhasil diunggah.",
+            "url_foto": url_publik,
+        }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Terjadi kesalahan teknis saat mengunggah foto: {str(e)}",
+        )
+
 ```
+
+[Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
-
-## 17. `.gitignore`
-```gitignore
-# ==========================================
-# 1. Environment Variables & Secrets (SANGAT KRUSIAL)
-# ==========================================
-# Jangan pernah upload kredensial / API key / database key ke GitHub!
-.env
-.env.*
-!.env.example
-*.pem
-*.key
-*.cert
-
-# ==========================================
-# 2. Virtual Environments
-# ==========================================
-# Folder dependensi lokal yang diinstall
-.venv/
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
-.python-version-backup
-
-# ==========================================
-# 3. Python Bytecode & Cache
-# ==========================================
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-
-# ==========================================
-# 4. Testing, Linting & Coverage
-# ==========================================
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-
-# ==========================================
-# 5. Build, Distribution & Packaging
-# ==========================================
-build/
-dist/
-*.egg-info/
-*.egg
-.eggs/
-
-# ==========================================
-# 6. IDE, Code Editor & Tools
-# ==========================================
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# ==========================================
-# 7. OS Generated & Temporary Files
-# ==========================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-*.log
-logs/
-*.tmp
-*.bak
-```

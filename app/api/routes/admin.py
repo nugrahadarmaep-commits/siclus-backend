@@ -6,6 +6,7 @@ import jwt
 import pandas as pd
 from app.core.config import settings
 from app.db.database import supabase
+from datetime import date
 from app.schemas.user import UserRegister, UserUpdate
 from app.schemas.jadwal import JadwalCreate, JadwalUpdate
 from app.core.security import get_password_hash
@@ -14,9 +15,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ==========================================
-# FUNGSI KEAMANAN: VERIFIKASI HAK AKSES ADMIN
-# ==========================================
+# ─── FUNGSI KEAMANAN: VERIFIKASI HAK AKSES ADMIN ──────────────────────
 def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
     Fungsi otorisasi khusus (Role-Based Access Control) untuk Administrator.
@@ -24,7 +23,6 @@ def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(securit
     """
     token = credentials.credentials
     try:
-        # Dekode token JWT
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
@@ -53,20 +51,65 @@ def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# ==========================================
-# ENDPOINT: DASHBOARD ADMIN (TESTING)
-# ==========================================
+# ─── ENDPOINT: DASHBOARD ADMIN ────────────────────────────
 @router.get("/dashboard")
 def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
     """
-    Endpoint uji coba untuk memastikan verifikasi Admin berjalan dengan baik.
+    Menarik ringkasan data operasional harian secara umum.
+    Menghitung: Total supir terdaftar, supir jalan (hadir), absen, dan telat HARI INI.
     """
-    return {"pesan": f"Selamat datang di Dasbor VIP, {email_admin}!"}
+    try:
+        tanggal_hari_ini = str(date.today())
+
+        # 1. Cari Total Supir Terdaftar di Sistem
+        users_res = (
+            supabase.table("users").select("id").eq("role", "pengemudi").execute()
+        )
+        total_supir = len(users_res.data)
+
+        # 2. Cari Laporan Hari Ini beserta sesi perjalanannya
+        # Ini buat tau siapa aja yang udah absen selfie/jalan hari ini
+        reports_res = (
+            supabase.table("daily_reports")
+            .select("id, id_supir, trip_sessions(status_waktu)")
+            .eq("tanggal", tanggal_hari_ini)
+            .execute()
+        )
+        data_laporan_hari_ini = reports_res.data
+
+        # 3. Hitung Matematika Dasarnya
+        total_jalan = len(data_laporan_hari_ini)
+        total_absen = total_supir - total_jalan
+        if total_absen < 0:
+            total_absen = 0  # Jaga-jaga biar kaga minus
+
+        # 4. Hitung Berapa Supir yang Terlambat Hari Ini
+        total_telat = 0
+        for laporan in data_laporan_hari_ini:
+            sesi_list = laporan.get("trip_sessions", [])
+            for sesi in sesi_list:
+                if sesi.get("status_waktu") == "TERLAMBAT":
+                    total_telat += 1
+                    break  # Cukup dihitung 1 kali per supir meskipun telat pagi dan siang
+
+        return {
+            "pesan": "Data metrik dashboard berhasil ditarik.",
+            "data": {
+                "tanggal": tanggal_hari_ini,
+                "total_supir_terdaftar": total_supir,
+                "total_supir_jalan": total_jalan,
+                "total_supir_absen": total_absen,
+                "total_supir_telat": total_telat,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Terjadi kesalahan saat menghitung metrik dashboard: {str(e)}",
+        )
 
 
-# ==========================================
-# ENDPOINT: REKAPITULASI DATA (HALAMAN ADMIN)
-# ==========================================
+# ─── ENDPOINT: REKAPITULASI DATA (HALAMAN ADMIN) ──────────────────────
 @router.get("/rekap")
 def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -95,9 +138,7 @@ def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
         )
 
 
-# ==========================================
-# ENDPOINT: UNDUH LAPORAN EXCEL (.xlsx)
-# ==========================================
+# ─── ENDPOINT: UNDUH LAPORAN EXCEL (.xlsx) ────────────────────────────
 @router.get("/export-excel")
 def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -165,9 +206,7 @@ def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
         )
 
 
-# ==========================================
-# ENDPOINT: LIHAT SEMUA AKUN SUPIR (READ)
-# ==========================================
+# ─── ENDPOINT: LIHAT SEMUA AKUN SUPIR (READ) ──────────────────────────
 @router.get("/users")
 def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -190,17 +229,40 @@ def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
 
 
-# ==========================================
-# ENDPOINT: TAMBAH AKUN SUPIR BARU (CREATE)
-# ==========================================
+# ─── ENDPOINT: TAMBAH AKUN SUPIR BARU (CREATE) ────────────────────────
 @router.post("/users")
 def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_admin)):
     """
     Mendaftarkan akun pengemudi baru. Kata sandi akan dienkripsi (hashing)
     sebelum disimpan ke dalam database.
     """
+
+    if (
+        not data.id.strip()
+        or not data.nama_lengkap.strip()
+        or not data.email.strip()
+        or not data.password.strip()
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gagal. ID, Nama, Email, dan Password tidak boleh kosong atau hanya berisi spasi!",
+        )
+
+    cek_id = supabase.table("users").select("id").eq("id", data.id).execute()
+    if cek_id.data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Gagal. ID Pengemudi '{data.id}' sudah terdaftar di sistem.",
+        )
+
+    cek_email = supabase.table("users").select("id").eq("email", data.email).execute()
+    if cek_email.data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Gagal. Email '{data.email}' sudah terdaftar untuk pengguna lain.",
+        )
+
     try:
-        # Enkripsi password sebelum masuk database
         hashed_pw = get_password_hash(data.password)
 
         response = (
@@ -208,7 +270,7 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
             .insert(
                 {
                     "id": data.id,
-                    "nama": data.nama_lengkap,  # Mapping dari schema ke kolom database
+                    "nama": data.nama_lengkap,
                     "email": data.email,
                     "password": hashed_pw,
                     "role": data.role,
@@ -219,7 +281,6 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
             .execute()
         )
 
-        # Hapus tampilan password di response demi keamanan
         user_terdaftar = response.data[0]
         user_terdaftar.pop("password", None)
 
@@ -228,9 +289,7 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
         raise HTTPException(status_code=500, detail=f"Gagal menambah supir: {str(e)}")
 
 
-# ==========================================
-# ENDPOINT: EDIT DATA SUPIR (UPDATE)
-# ==========================================
+# ─── ENDPOINT: EDIT DATA SUPIR (UPDATE) ───────────────────────────────
 @router.put("/users/{user_id}")
 def edit_data_supir(
     user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
@@ -275,9 +334,7 @@ def edit_data_supir(
         raise HTTPException(status_code=500, detail=f"Gagal memperbarui data: {str(e)}")
 
 
-# ==========================================
-# ENDPOINT: HAPUS AKUN SUPIR (DELETE)
-# ==========================================
+# ─── ENDPOINT: HAPUS AKUN SUPIR (DELETE) ──────────────────────────────
 @router.delete("/users/{user_id}")
 def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
     """
@@ -301,9 +358,7 @@ def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=f"Gagal menghapus supir: {str(e)}")
 
 
-# ==========================================
-# ENDPOINT: LIHAT SEMUA JADWAL (READ)
-# ==========================================
+# ─── ENDPOINT: LIHAT SEMUA JADWAL (READ) ──────────────────────────────
 @router.get("/jadwal")
 def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
     """
@@ -320,9 +375,7 @@ def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
 
 
-# ==========================================
-# ENDPOINT: BIKIN JADWAL BARU (CREATE)
-# ==========================================
+# ─── ENDPOINT: BIKIN JADWAL BARU (CREATE) ─────────────────────────────
 @router.post("/jadwal")
 def tambah_jadwal_baru(
     data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
@@ -352,9 +405,7 @@ def tambah_jadwal_baru(
         raise HTTPException(status_code=500, detail=f"Gagal menambah jadwal: {str(e)}")
 
 
-# ==========================================
-# ENDPOINT: EDIT JADWAL (UPDATE)
-# ==========================================
+# ─── ENDPOINT: EDIT JADWAL (UPDATE) ───────────────────────────────────
 @router.put("/jadwal/{jadwal_id}")
 def edit_jadwal(
     jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)

@@ -5,7 +5,7 @@ from app.schemas.inspeksi import InspeksiCreate
 from app.schemas.perjalanan import TripSessionCreate
 
 
-# Fungsi untuk membuat entri laporan harian baru di database
+# ─── FUNGSI 1: BIKIN LAPORAN HARIAN ──────────────────────
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
         response = (
@@ -20,9 +20,7 @@ def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
             )
             .execute()
         )
-
         return response.data[0]
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -30,8 +28,19 @@ def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
         )
 
 
-# Fungsi untuk menyimpan hasil pengecekan fisik kendaraan
+# ─── FUNGSI 2: SIMPAN INSPEKSI ───────────
 def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
+    # 1. CEK DULU LAPORANNYA ADA APA KAGA DI DATABASE
+    cek_laporan = (
+        supabase.table("daily_reports").select("id").eq("id", laporan_id).execute()
+    )
+    if not cek_laporan.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Laporan dengan ID {laporan_id} tidak ditemukan. Silakan tekan 'Mulai Laporan' terlebih dahulu.",
+        )
+
+    # 2. KALO ADA, BARU MASUKIN DATANYA
     try:
         response = (
             supabase.table("inspections")
@@ -52,9 +61,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
             )
             .execute()
         )
-
         return response.data[0]
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -62,11 +69,19 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
         )
 
 
-# fungsi untuk menyimpan sesi perjalanan
+# ─── FUNGSI 3: SIMPAN SESI ───────────────
 def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
-    # ==========================================
-    # LOGIKA EVALUASI KETERLAMBATAN OTOMATIS
-    # ==========================================
+    # 1. CEK DULU LAPORANNYA ADA APA KAGA DI DATABASE
+    cek_laporan = (
+        supabase.table("daily_reports").select("id").eq("id", laporan_id).execute()
+    )
+    if not cek_laporan.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Laporan dengan ID {laporan_id} tidak ditemukan. Silakan tekan 'Mulai Laporan' terlebih dahulu.",
+        )
+
+    # 2. LOGIKA: EVALUASI KETERLAMBATAN OTOMATIS
     status_telat = "TEPAT WAKTU"
 
     if data.jam_berangkat_start:
@@ -82,9 +97,7 @@ def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
             if jam_bersih > "15:00":
                 status_telat = "TERLAMBAT"
 
-    # ==========================================
-    # PROSES PENYIMPANAN DATA KE DATABASE
-    # ==========================================
+    # 3. PROSES: PENYIMPANAN DATA KE DATABASE
     try:
         response = (
             supabase.table("trip_sessions")
@@ -106,7 +119,6 @@ def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
             )
             .execute()
         )
-
         return response.data[0]
 
     except Exception as e:

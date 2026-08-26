@@ -18,9 +18,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ==========================================
-# FUNGSI KEAMANAN: VERIFIKASI TOKEN JWT
-# ==========================================
+# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN JWT ────────────────────────────
 def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """
     Fungsi otorisasi yang dieksekusi sebelum endpoint utama diproses.
@@ -39,7 +37,6 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
                 detail="Kredensial tidak valid. Payload token kosong.",
             )
 
-        # Mengembalikan email pengemudi jika autentikasi berhasil
         return email_supir
 
     except jwt.ExpiredSignatureError:
@@ -54,9 +51,7 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# ==========================================
-# ENDPOINT: INISIALISASI LAPORAN HARIAN
-# ==========================================
+# ─── ENDPOINT: INISIALISASI LAPORAN HARIAN ────────────────────────────
 @router.post("/mulai")
 def mulai_laporan(
     data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
@@ -68,9 +63,7 @@ def mulai_laporan(
     return hasil
 
 
-# ==========================================
-# ENDPOINT: PENGISIAN DATA INSPEKSI
-# ==========================================
+# ─── ENDPOINT: PENGISIAN DATA INSPEKSI ────────────────────────────────
 @router.post("/inspeksi")
 def inspeksi_kendaraan(
     laporan_id: str, data: InspeksiCreate, email_supir: str = Depends(verifikasi_token)
@@ -82,9 +75,7 @@ def inspeksi_kendaraan(
     return hasil
 
 
-# ==========================================
-# ENDPOINT: PENGISIAN SESI PERJALANAN
-# ==========================================
+# ─── ENDPOINT: PENGISIAN SESI PERJALANAN ──────────────────────────────
 @router.post("/sesi")
 def sesi_perjalanan(
     laporan_id: str,
@@ -98,9 +89,7 @@ def sesi_perjalanan(
     return hasil
 
 
-# ==========================================
-# ENDPOINT: UNGGAH FOTO KEHADIRAN (SELFIE)
-# ==========================================
+# ─── ENDPOINT: UNGGAH FOTO KEHADIRAN (SELFIE) ─────────────────────────
 @router.post("/upload-selfie")
 async def upload_selfie(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
