@@ -11,9 +11,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ==========================================
-# FUNGSI KEAMANAN: VERIFIKASI TOKEN PENGEMUDI
-# ==========================================
+# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN PENGEMUDI ──────────────────────
 def verifikasi_pengemudi(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
@@ -48,9 +46,7 @@ def verifikasi_pengemudi(
         )
 
 
-# ==========================================
-# ENDPOINT: DATA PROFIL PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: DATA PROFIL PENGEMUDI ──────────────────────────────────
 @router.get("/profil")
 def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -85,9 +81,7 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==========================================
-# ENDPOINT: UBAH FOTO PROFIL PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: UBAH FOTO PROFIL PENGEMUDI ─────────────────────────────
 @router.put("/profil/foto")
 async def update_foto_profil(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_pengemudi)
@@ -138,9 +132,7 @@ async def update_foto_profil(
         )
 
 
-# ==========================================
-# ENDPOINT: RIWAYAT PERJALANAN PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: RIWAYAT PERJALANAN PENGEMUDI ───────────────────────────
 @router.get("/riwayat")
 def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -174,9 +166,7 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==========================================
-# ENDPOINT: JADWAL OPERASIONAL PENGEMUDI
-# ==========================================
+# ─── ENDPOINT: JADWAL OPERASIONAL PENGEMUDI ───────────────────────────
 @router.get("/jadwal")
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     """
