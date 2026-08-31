@@ -5,11 +5,19 @@ import time
 
 from app.schemas.laporan import LaporanHarianCreate
 from app.schemas.inspeksi import InspeksiCreate
-from app.schemas.perjalanan import TripSessionCreate
+from app.schemas.perjalanan import (
+    SesiCP1Create,
+    SesiCP2Update,
+    SesiCP3Update,
+    SesiCP4Update,
+)
 from app.services.laporan_service import (
     create_laporan_harian,
     create_inspeksi_kendaraan,
-    create_sesi_perjalanan,
+    proses_cp1,
+    proses_cp2,
+    proses_cp3,
+    proses_cp4,
 )
 from app.core.config import settings
 from app.db.database import supabase
@@ -18,12 +26,8 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN JWT ────────────────────────────
+# verifikasitoken
 def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    Fungsi otorisasi yang dieksekusi sebelum endpoint utama diproses.
-    Bertugas melakukan dekode JWT dan memvalidasi kredensial pengguna.
-    """
     token = credentials.credentials
     try:
         payload = jwt.decode(
@@ -36,7 +40,6 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Kredensial tidak valid. Payload token kosong.",
             )
-
         return email_supir
 
     except jwt.ExpiredSignatureError:
@@ -51,54 +54,59 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# ─── ENDPOINT: INISIALISASI LAPORAN HARIAN ────────────────────────────
+# inislaporan
 @router.post("/mulai")
 def mulai_laporan(
     data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Membuat entri data awal untuk laporan harian operasional pengemudi.
-    """
-    hasil = create_laporan_harian(data, email_supir)
-    return hasil
+    return create_laporan_harian(data, email_supir)
 
 
-# ─── ENDPOINT: PENGISIAN DATA INSPEKSI ────────────────────────────────
+# inspeksi
 @router.post("/inspeksi")
 def inspeksi_kendaraan(
     laporan_id: str, data: InspeksiCreate, email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Menyimpan hasil pemeriksaan kelaikan kondisi fisik kendaraan.
-    """
-    hasil = create_inspeksi_kendaraan(laporan_id, data)
-    return hasil
+    return create_inspeksi_kendaraan(laporan_id, data)
 
 
-# ─── ENDPOINT: PENGISIAN SESI PERJALANAN ──────────────────────────────
-@router.post("/sesi")
-def sesi_perjalanan(
-    laporan_id: str,
-    data: TripSessionCreate,
-    email_supir: str = Depends(verifikasi_token),
+# sesicp1
+@router.post("/sesi/cp1")
+def sesi_checkpoint_1(
+    laporan_id: str, data: SesiCP1Create, email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Merekam data odometer dan waktu operasi untuk rute perjalanan pengemudi.
-    """
-    hasil = create_sesi_perjalanan(laporan_id, data)
-    return hasil
+    return proses_cp1(laporan_id, data, email_supir)
 
 
-# ─── ENDPOINT: UNGGAH FOTO KEHADIRAN (SELFIE) ─────────────────────────
+# sesicp2
+@router.put("/sesi/cp2/{sesi_id}")
+def sesi_checkpoint_2(
+    sesi_id: str, data: SesiCP2Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp2(sesi_id, data, email_supir)
+
+
+# sesicp3
+@router.put("/sesi/cp3/{sesi_id}")
+def sesi_checkpoint_3(
+    sesi_id: str, data: SesiCP3Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp3(sesi_id, data, email_supir)
+
+
+# sesicp4
+@router.put("/sesi/cp4/{sesi_id}")
+def sesi_checkpoint_4(
+    sesi_id: str, data: SesiCP4Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp4(sesi_id, data, email_supir)
+
+
+# uploadselfie
 @router.post("/upload-selfie")
 async def upload_selfie(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Menerima file gambar (selfie) untuk validasi kehadiran,
-    mengunggahnya ke infrastruktur penyimpanan (Storage),
-    dan mengembalikan URL akses publik.
-    """
     try:
         ekstensi = foto.filename.split(".")[-1].lower()
         if ekstensi not in ["jpg", "jpeg", "png"]:
@@ -112,7 +120,7 @@ async def upload_selfie(
 
         isi_gambar = await foto.read()
 
-        response = supabase.storage.from_("selfie_driver").upload(
+        supabase.storage.from_("selfie_driver").upload(
             file=isi_gambar,
             path=nama_file_baru,
             file_options={"content-type": foto.content_type},

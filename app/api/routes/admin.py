@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -15,60 +16,39 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ─── FUNGSI KEAMANAN: VERIFIKASI HAK AKSES ADMIN ──────────────────────
+# verifikasiadmin
 def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    Fungsi otorisasi khusus (Role-Based Access Control) untuk Administrator.
-    Memvalidasi keberadaan token sekaligus memastikan 'role' pengguna adalah 'admin'.
-    """
     token = credentials.credentials
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-
         email_user = payload.get("sub")
         role_user = payload.get("role")
 
-        # Validasi Role: Jika bukan admin, tolak akses (403 Forbidden)
         if role_user != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Akses ditolak. Endpoint ini secara eksklusif hanya untuk Administrator.",
+                detail="Akses ditolak. Eksklusif untuk Administrator.",
             )
-
         return email_user
-
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sesi telah kedaluwarsa. Silakan login kembali.",
-        )
+        raise HTTPException(status_code=401, detail="Sesi kedaluwarsa.")
     except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token autentikasi tidak valid atau telah dimanipulasi.",
-        )
+        raise HTTPException(status_code=401, detail="Token tidak valid.")
 
 
-# ─── ENDPOINT: DASHBOARD ADMIN ────────────────────────────
+# dashboard
 @router.get("/dashboard")
 def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik ringkasan data operasional harian secara umum.
-    Menghitung: Total supir terdaftar, supir jalan (hadir), absen, dan telat HARI INI.
-    """
     try:
         tanggal_hari_ini = str(date.today())
 
-        # 1. Cari Total Supir Terdaftar di Sistem
         users_res = (
             supabase.table("users").select("id").eq("role", "pengemudi").execute()
         )
         total_supir = len(users_res.data)
 
-        # 2. Cari Laporan Hari Ini beserta sesi perjalanannya
-        # Ini buat tau siapa aja yang udah absen selfie/jalan hari ini
         reports_res = (
             supabase.table("daily_reports")
             .select("id, id_supir, trip_sessions(status_waktu)")
@@ -77,23 +57,19 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
         )
         data_laporan_hari_ini = reports_res.data
 
-        # 3. Hitung Matematika Dasarnya
         total_jalan = len(data_laporan_hari_ini)
-        total_absen = total_supir - total_jalan
-        if total_absen < 0:
-            total_absen = 0  # Jaga-jaga biar kaga minus
+        total_absen = max(0, total_supir - total_jalan)
 
-        # 4. Hitung Berapa Supir yang Terlambat Hari Ini
         total_telat = 0
         for laporan in data_laporan_hari_ini:
             sesi_list = laporan.get("trip_sessions", [])
             for sesi in sesi_list:
                 if sesi.get("status_waktu") == "TERLAMBAT":
                     total_telat += 1
-                    break  # Cukup dihitung 1 kali per supir meskipun telat pagi dan siang
+                    break
 
         return {
-            "pesan": "Data metrik dashboard berhasil ditarik.",
+            "pesan": "Metrik dashboard ditarik.",
             "data": {
                 "tanggal": tanggal_hari_ini,
                 "total_supir_terdaftar": total_supir,
@@ -103,70 +79,81 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
             },
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan saat menghitung metrik dashboard: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"Gagal hitung metrik: {str(e)}")
 
 
-# ─── ENDPOINT: REKAPITULASI DATA (HALAMAN ADMIN) ──────────────────────
+# rekap
 @router.get("/rekap")
 def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik seluruh data laporan harian, termasuk detail inspeksi
-    dan sesi perjalanan pengemudi. Data ini digunakan untuk
-    ditampilkan pada tabel antarmuka dasbor Administrator.
-    """
     try:
-        # Menarik data laporan utama beserta relasinya (inspeksi dan sesi)
-        # Tanda (*) di dalam kurung berarti menarik semua kolom dari tabel terkait
         response = (
             supabase.table("daily_reports")
             .select("*, inspections(*), trip_sessions(*)")
             .execute()
         )
-
         return {
-            "pesan": "Data rekapitulasi berhasil ditarik.",
+            "pesan": "Rekapitulasi ditarik.",
             "total_data": len(response.data),
             "data": response.data,
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat menarik data rekapitulasi: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: UNDUH LAPORAN EXCEL (.xlsx) ────────────────────────────
-@router.get("/export-excel")
-def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Mengonversi data laporan operasional menjadi format file Excel (.xlsx)
-    yang siap diunduh oleh Administrator.
-    """
+# riwayatharian
+@router.get("/riwayat-harian")
+def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
     try:
-        # 1. Menarik data laporan utama beserta relasinya
+        # Ambil laporan + nama supir + status waktu, urutkan dari terbaru
         response = (
             supabase.table("daily_reports")
-            .select("*, inspections(*), trip_sessions(*)")
+            .select("*, users(nama), trip_sessions(status_waktu, tipe_sesi)")
+            .order("tanggal", desc=True)
             .execute()
         )
 
+        # Algoritma grouping per tanggal buat frontend
+        grup_tanggal = {}
+        for laporan in response.data:
+            tgl = laporan.get("tanggal")
+            if tgl not in grup_tanggal:
+                grup_tanggal[tgl] = []
+            grup_tanggal[tgl].append(laporan)
+
+        hasil_format = [
+            {"tanggal": tgl, "laporan": isi} for tgl, isi in grup_tanggal.items()
+        ]
+
+        return {"pesan": "Riwayat harian ditarik.", "data": hasil_format}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# exportexcel
+@router.get("/export-excel")
+def export_rekap_excel(
+    id_supir: Optional[str] = None, email_admin: str = Depends(verifikasi_admin)
+):
+    try:
+        query = supabase.table("daily_reports").select(
+            "*, inspections(*), trip_sessions(*)"
+        )
+
+        # Filter jika mau export personal
+        if id_supir:
+            query = query.eq("id_supir", id_supir)
+
+        response = query.execute()
         data_laporan = response.data
 
         if not data_laporan:
-            raise HTTPException(status_code=404, detail="Data laporan masih kosong.")
+            raise HTTPException(status_code=404, detail="Data laporan kosong.")
 
-        # 2. Menyiapkan kerangka data (struktur baris dan kolom) untuk Excel
         tabel_excel = []
-
         for baris in data_laporan:
-            # Mengambil sesi perjalanan pertama untuk simplifikasi laporan
             sesi_list = baris.get("trip_sessions", [])
             sesi = sesi_list[0] if sesi_list else {}
 
-            # Memetakan kolom sesuai kebutuhan instansi
             tabel_excel.append(
                 {
                     "Tanggal Operasional": baris.get("tanggal"),
@@ -180,38 +167,26 @@ def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
                 }
             )
 
-        # 3. Mengonversi data kerangka menjadi DataFrame Pandas (Tabel Virtual)
         df = pd.DataFrame(tabel_excel)
-
-        # 4. Membuat file Excel di dalam memori sistem (RAM) tanpa menyimpannya di hard disk
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Rekap_Laporan_Siclus")
+            df.to_excel(writer, index=False, sheet_name="Rekap_Siclus")
 
-        buffer.seek(0)  # Mengembalikan pointer memori ke awal file
+        buffer.seek(0)
+        nama_file = f"Rekap_{id_supir}.xlsx" if id_supir else "Rekap_Semua_Supir.xlsx"
 
-        # 5. Mengirimkan file Excel sebagai bentuk unduhan (attachment)
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": "attachment; filename=Rekap_Laporan_Siclus.xlsx"
-            },
+            headers={"Content-Disposition": f"attachment; filename={nama_file}"},
         )
-
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat membuat dokumen Excel: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"Gagal export: {str(e)}")
 
 
-# ─── ENDPOINT: LIHAT SEMUA AKUN SUPIR (READ) ──────────────────────────
+# getusers
 @router.get("/users")
 def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik seluruh daftar pengguna yang memiliki role sebagai 'pengemudi'.
-    """
     try:
         response = (
             supabase.table("users")
@@ -219,52 +194,27 @@ def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
             .eq("role", "pengemudi")
             .execute()
         )
-
         return {
-            "pesan": "Daftar pengemudi berhasil ditarik.",
+            "pesan": "Daftar pengemudi ditarik.",
             "total": len(response.data),
             "data": response.data,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: TAMBAH AKUN SUPIR BARU (CREATE) ────────────────────────
+# postusers
 @router.post("/users")
 def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_admin)):
-    """
-    Mendaftarkan akun pengemudi baru. Kata sandi akan dienkripsi (hashing)
-    sebelum disimpan ke dalam database.
-    """
+    if not data.id.strip() or not data.email.strip() or not data.password.strip():
+        raise HTTPException(status_code=400, detail="Data tidak boleh kosong.")
 
-    if (
-        not data.id.strip()
-        or not data.nama_lengkap.strip()
-        or not data.email.strip()
-        or not data.password.strip()
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Gagal. ID, Nama, Email, dan Password tidak boleh kosong atau hanya berisi spasi!",
-        )
-
-    cek_id = supabase.table("users").select("id").eq("id", data.id).execute()
-    if cek_id.data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Gagal. ID Pengemudi '{data.id}' sudah terdaftar di sistem.",
-        )
-
-    cek_email = supabase.table("users").select("id").eq("email", data.email).execute()
-    if cek_email.data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Gagal. Email '{data.email}' sudah terdaftar untuk pengguna lain.",
-        )
+    if supabase.table("users").select("id").eq("id", data.id).execute().data:
+        raise HTTPException(status_code=400, detail="ID sudah terdaftar.")
+    if supabase.table("users").select("id").eq("email", data.email).execute().data:
+        raise HTTPException(status_code=400, detail="Email sudah dipakai.")
 
     try:
-        hashed_pw = get_password_hash(data.password)
-
         response = (
             supabase.table("users")
             .insert(
@@ -272,7 +222,7 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
                     "id": data.id,
                     "nama": data.nama_lengkap,
                     "email": data.email,
-                    "password": hashed_pw,
+                    "password": get_password_hash(data.password),
                     "role": data.role,
                     "trayek": data.trayek,
                     "bus": data.bus,
@@ -280,109 +230,67 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
             )
             .execute()
         )
-
         user_terdaftar = response.data[0]
         user_terdaftar.pop("password", None)
-
-        return {"pesan": "Akun pengemudi berhasil dibuat.", "data": user_terdaftar}
+        return {"pesan": "Akun dibuat.", "data": user_terdaftar}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menambah supir: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: EDIT DATA SUPIR (UPDATE) ───────────────────────────────
+# putusers
 @router.put("/users/{user_id}")
 def edit_data_supir(
     user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
 ):
-    """
-    Memperbarui data penugasan atau profil pengemudi berdasarkan ID.
-    """
     try:
-        # Hanya ambil data yang diisi oleh Admin (tidak None)
-        update_data = {}
-        if data.nama_lengkap:
-            update_data["nama"] = data.nama_lengkap
-        if data.email:
-            update_data["email"] = data.email
-        if data.trayek:
-            update_data["trayek"] = data.trayek
-        if data.bus:
-            update_data["bus"] = data.bus
-
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
-            raise HTTPException(
-                status_code=400, detail="Tidak ada data yang dikirim untuk diubah."
-            )
+            raise HTTPException(status_code=400, detail="Tidak ada data diubah.")
+
+        if "nama_lengkap" in update_data:
+            update_data["nama"] = update_data.pop("nama_lengkap")
 
         response = (
             supabase.table("users").update(update_data).eq("id", user_id).execute()
         )
-
         if not response.data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
-            )
-
-        return {
-            "pesan": "Data pengemudi berhasil diperbarui.",
-            "data": response.data[0],
-        }
-    except HTTPException as e:
-        raise e
+            raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
+        return {"pesan": "Data diperbarui.", "data": response.data[0]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal memperbarui data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: HAPUS AKUN SUPIR (DELETE) ──────────────────────────────
+# deleteusers
 @router.delete("/users/{user_id}")
 def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menghapus akun pengemudi dari sistem secara permanen berdasarkan ID.
-    """
     try:
         response = supabase.table("users").delete().eq("id", user_id).execute()
-
         if not response.data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
-            )
-
-        return {
-            "pesan": f"Akun pengemudi dengan ID {user_id} berhasil dihapus permanen."
-        }
-    except HTTPException as e:
-        raise e
+            raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
+        return {"pesan": f"Akun {user_id} dihapus."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menghapus supir: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: LIHAT SEMUA JADWAL (READ) ──────────────────────────────
+# getjadwal
 @router.get("/jadwal")
 def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik semua data batas waktu operasional (cut-off time) dari seluruh trayek.
-    """
     try:
         response = supabase.table("schedules").select("*").order("trayek").execute()
         return {
-            "pesan": "Daftar jadwal operasional berhasil ditarik.",
+            "pesan": "Jadwal ditarik.",
             "total": len(response.data),
             "data": response.data,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: BIKIN JADWAL BARU (CREATE) ─────────────────────────────
+# postjadwal
 @router.post("/jadwal")
 def tambah_jadwal_baru(
     data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
 ):
-    """
-    Menambahkan aturan batas waktu baru untuk sebuah trayek dan sesi tertentu.
-    """
     try:
         response = (
             supabase.table("schedules")
@@ -396,35 +304,20 @@ def tambah_jadwal_baru(
             )
             .execute()
         )
-
-        return {
-            "pesan": "Jadwal operasional baru berhasil ditambahkan.",
-            "data": response.data[0],
-        }
+        return {"pesan": "Jadwal ditambahkan.", "data": response.data[0]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menambah jadwal: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: EDIT JADWAL (UPDATE) ───────────────────────────────────
+# putjadwal
 @router.put("/jadwal/{jadwal_id}")
 def edit_jadwal(
     jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
 ):
-    """
-    Memperbarui batas waktu toleransi pada jadwal yang sudah ada berdasarkan ID.
-    """
     try:
-        update_data = {}
-        if data.batas_keluar_dishub:
-            update_data["batas_keluar_dishub"] = data.batas_keluar_dishub
-        if data.batas_tiba_start:
-            update_data["batas_tiba_start"] = data.batas_tiba_start
-
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
-            raise HTTPException(
-                status_code=400,
-                detail="Tidak ada data waktu yang dikirim untuk diubah.",
-            )
+            raise HTTPException(status_code=400, detail="Tidak ada data diubah.")
 
         response = (
             supabase.table("schedules")
@@ -432,19 +325,8 @@ def edit_jadwal(
             .eq("id", jadwal_id)
             .execute()
         )
-
         if not response.data:
-            raise HTTPException(
-                status_code=404, detail=f"Jadwal dengan ID {jadwal_id} tidak ditemukan."
-            )
-
-        return {
-            "pesan": "Batas waktu jadwal berhasil diperbarui.",
-            "data": response.data[0],
-        }
-    except HTTPException as e:
-        raise e
+            raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan.")
+        return {"pesan": "Jadwal diperbarui.", "data": response.data[0]}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Gagal memperbarui jadwal: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=str(e))

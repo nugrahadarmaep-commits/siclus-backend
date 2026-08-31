@@ -1,6 +1,6 @@
 # SICLUS Backend - Source Code Documentation
 
-Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** tanpa modifikasi.
+Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru murni tanpa modifikasi.
 
 ---
 
@@ -12,7 +12,7 @@ siclus-backend/
 ├── .gitignore
 ├── .python-version
 ├── pyproject.toml
-├── README.md
+├── be.md
 └── app/
     ├── __init__.py
     ├── main.py
@@ -49,48 +49,48 @@ siclus-backend/
 ## 📑 Daftar Isi
 
 ### ⚙️ Konfigurasi & Lingkungan
-- [`pyproject.toml`](#pyprojecttoml)
-- [`.env.example`](#envexample)
-- [`.gitignore`](#gitignore)
-- [`.python-version`](#python-version)
+- [`pyproject.toml`](#1-pyprojecttoml)
+- [`.env.example`](#2-envexample)
+- [`.gitignore`](#3-gitignore)
+- [`.python-version`](#4-python-version)
 
 ### 🚀 Entry Point Aplikasi
-- [`app/__init__.py`](#app__init__py)
-- [`app/main.py`](#appmainpy)
+- [`app/__init__.py`](#5-app__init__py)
+- [`app/main.py`](#6-appmainpy)
 
 ### 🛡️ Core & Keamanan
-- [`app/core/__init__.py`](#appcore__init__py)
-- [`app/core/config.py`](#appcoreconfigpy)
-- [`app/core/security.py`](#appcoresecuritypy)
+- [`app/core/__init__.py`](#7-appcore__init__py)
+- [`app/core/config.py`](#8-appcoreconfigpy)
+- [`app/core/security.py`](#9-appcoresecuritypy)
 
 ### 🗄️ Database
-- [`app/db/__init__.py`](#appdb__init__py)
-- [`app/db/database.py`](#appdbdatabasepy)
+- [`app/db/__init__.py`](#10-appdb__init__py)
+- [`app/db/database.py`](#11-appdbdatabasepy)
 
 ### 📋 Schemas (Pydantic)
-- [`app/schemas/__init__.py`](#appschemas__init__py)
-- [`app/schemas/user.py`](#appschemasuserpy)
-- [`app/schemas/inspeksi.py`](#appschemasinspeksipy)
-- [`app/schemas/jadwal.py`](#appschemasjadwalpy)
-- [`app/schemas/perjalanan.py`](#appschemasperjalananpy)
-- [`app/schemas/laporan.py`](#appschemaslaporanpy)
+- [`app/schemas/__init__.py`](#12-appschemas__init__py)
+- [`app/schemas/user.py`](#13-appschemasuserpy)
+- [`app/schemas/inspeksi.py`](#14-appschemasinspeksipy)
+- [`app/schemas/jadwal.py`](#15-appschemasjadwalpy)
+- [`app/schemas/perjalanan.py`](#16-appschemasperjalananpy)
+- [`app/schemas/laporan.py`](#17-appschemaslaporanpy)
 
 ### ⚙️ Services (Business Logic)
-- [`app/services/__init__.py`](#appservices__init__py)
-- [`app/services/auth_service.py`](#appservicesauth_servicepy)
-- [`app/services/laporan_service.py`](#appserviceslaporan_servicepy)
+- [`app/services/__init__.py`](#18-appservices__init__py)
+- [`app/services/auth_service.py`](#19-appservicesauth_servicepy)
+- [`app/services/laporan_service.py`](#20-appserviceslaporan_servicepy)
 
 ### 🌐 API Routes (Endpoints)
-- [`app/api/__init__.py`](#appapi__init__py)
-- [`app/api/routes/__init__.py`](#appapiroutes__init__py)
-- [`app/api/routes/auth.py`](#appapiroutesauthpy)
-- [`app/api/routes/admin.py`](#appapiroutesadminpy)
-- [`app/api/routes/driver.py`](#appapiroutesdriverpy)
-- [`app/api/routes/laporan.py`](#appapirouteslaporanpy)
+- [`app/api/__init__.py`](#21-appapi__init__py)
+- [`app/api/routes/__init__.py`](#22-appapiroutes__init__py)
+- [`app/api/routes/auth.py`](#23-appapiroutesauthpy)
+- [`app/api/routes/admin.py`](#24-appapiroutesadminpy)
+- [`app/api/routes/driver.py`](#25-appapiroutesdriverpy)
+- [`app/api/routes/laporan.py`](#26-appapirouteslaporanpy)
 
 ---
 
-## `pyproject.toml`
+## 1. `pyproject.toml`
 
 ```toml
 [project]
@@ -119,14 +119,13 @@ dependencies = [
 
 [tool.uv]
 package = false
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `.env.example`
+## 2. `.env.example`
 
 ```env
 # Supabase Configuration
@@ -135,19 +134,19 @@ SUPABASE_KEY=your-supabase-anon-or-service-key
 
 # JWT Security Configuration
 SECRET_KEY=your-jwt-secret-key-here
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `.gitignore`
+## 3. `.gitignore`
 
 ```gitignore
 # ==========================================
-# 1. Environment Variables & Secrets
+# 1. Environment Variables & Secrets (SANGAT KRUSIAL)
 # ==========================================
+# Jangan pernah upload kredensial / API key / database key ke GitHub!
 .env
 .env.*
 !.env.example
@@ -158,6 +157,7 @@ SECRET_KEY=your-jwt-secret-key-here
 # ==========================================
 # 2. Virtual Environments
 # ==========================================
+# Folder dependensi lokal yang diinstall
 .venv/
 venv/
 ENV/
@@ -224,18 +224,17 @@ logs/
 
 ---
 
-## `.python-version`
+## 4. `.python-version`
 
-```
+```text
 3.14
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/__init__.py`
+## 5. `app/__init__.py`
 
 ```python
 
@@ -245,7 +244,7 @@ logs/
 
 ---
 
-## `app/main.py`
+## 6. `app/main.py`
 
 ```python
 from fastapi import FastAPI
@@ -282,14 +281,13 @@ app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
 @app.get("/")
 def root():
     return {"status": "mesin siclus berjalan!"}
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/core/__init__.py`
+## 7. `app/core/__init__.py`
 
 ```python
 
@@ -299,7 +297,7 @@ def root():
 
 ---
 
-## `app/core/config.py`
+## 8. `app/core/config.py`
 
 ```python
 import os
@@ -320,14 +318,13 @@ class Settings:
 
 
 settings = Settings()
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/core/security.py`
+## 9. `app/core/security.py`
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -375,14 +372,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     )
 
     return encoded_jwt
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/db/__init__.py`
+## 10. `app/db/__init__.py`
 
 ```python
 
@@ -392,7 +388,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 ---
 
-## `app/db/database.py`
+## 11. `app/db/database.py`
 
 ```python
 import os
@@ -411,14 +407,13 @@ if not API_URL or not API_KEY:
 
 # 4. Bikin jembatan koneksinya!
 supabase: Client = create_client(API_URL, API_KEY)
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/schemas/__init__.py`
+## 12. `app/schemas/__init__.py`
 
 ```python
 
@@ -428,7 +423,7 @@ supabase: Client = create_client(API_URL, API_KEY)
 
 ---
 
-## `app/schemas/user.py`
+## 13. `app/schemas/user.py`
 
 ```python
 from typing import Optional
@@ -484,7 +479,7 @@ class UserUpdate(BaseModel):
 
 ---
 
-## `app/schemas/inspeksi.py`
+## 14. `app/schemas/inspeksi.py`
 
 ```python
 from typing import Optional
@@ -505,14 +500,13 @@ class InspeksiCreate(BaseModel):
 
     # opsional catatan kerusakan
     catatan: Optional[str] = None
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/schemas/jadwal.py`
+## 15. `app/schemas/jadwal.py`
 
 ```python
 from typing import Optional
@@ -522,60 +516,57 @@ from pydantic import BaseModel
 # ─── SCHEMA: PEMBUATAN JADWAL BARU (CREATE) ───────────────────────────
 class JadwalCreate(BaseModel):
     trayek: str
-    tipe_sesi: str  # Wajib isi 'PAGI' atau 'SIANG'
-    batas_keluar_dishub: str  # Format string, contoh: '05:45'
-    batas_tiba_start: str  # Format string, contoh: '06:15'
+    tipe_sesi: str
+    batas_keluar_dishub: str
+    batas_tiba_start: str
 
 
 # ─── SCHEMA: PEMBARUAN JADWAL (UPDATE) ────────────────────────────────
-# Trayek dan sesi kaga usah diedit, Admin cukup ngedit jamnya aja.
 class JadwalUpdate(BaseModel):
     batas_keluar_dishub: Optional[str] = None
     batas_tiba_start: Optional[str] = None
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/schemas/perjalanan.py`
+## 16. `app/schemas/perjalanan.py`
 
 ```python
-from typing import Optional
 from pydantic import BaseModel
 
-# ─── SCHEMA: DATA SESI PERJALANAN (PAGI / SIANG) ──────────────────────
-# Skema ini akan dipakai dua kali sehari (Sesi PAGI dan Sesi SIANG).
-# Tipe datanya string untuk jam (contoh: "05:50 WIB") agar sinkron dengan Frontend.
-class TripSessionCreate(BaseModel):
-    tipe_sesi: str  # Wajib diisi "PAGI" atau "SIANG"
-    
-    # ─── DATA BERANGKAT DARI DISHUB ───
-    jam_berangkat_kantor: Optional[str] = None 
-    km_berangkat_kantor: Optional[int] = None
-    
-    # ─── DATA TIBA DI TITIK START (TERMINAL/SEKOLAH) ───
-    jam_berangkat_start: Optional[str] = None
-    km_berangkat_start: Optional[int] = None
-    
-    # ─── DATA TIBA DI TITIK FINISH (SEKOLAH/TERMINAL) ───
-    jam_tiba_finish: Optional[str] = None
-    km_tiba_finish: Optional[int] = None
-    
-    # ─── DATA JUMLAH PENUMPANG ───
-    jumlah_penumpang: Optional[int] = 0
-    
-    # ─── DATA KEMBALI KE DISHUB ───
-    jam_tiba_kantor: Optional[str] = None
-    km_tiba_kantor: Optional[int] = None
+
+# cp 1
+class SesiCP1Create(BaseModel):
+    tipe_sesi: str
+    nopol_kendaraan: str
+    km_berangkat_kantor: int
+    foto_awal: str
+
+
+# cp 2
+class SesiCP2Update(BaseModel):
+    km_berangkat_start: int
+
+
+# cp 3
+class SesiCP3Update(BaseModel):
+    km_tiba_finish: int
+    jumlah_penumpang: int
+
+
+# cp 4
+class SesiCP4Update(BaseModel):
+    km_tiba_kantor: int
+    foto_akhir: str
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/schemas/laporan.py`
+## 17. `app/schemas/laporan.py`
 
 ```python
 from datetime import date
@@ -590,14 +581,13 @@ class LaporanHarianCreate(BaseModel):
     tanggal: date
     trayek: str
     bus: str
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/services/__init__.py`
+## 18. `app/services/__init__.py`
 
 ```python
 
@@ -607,7 +597,7 @@ class LaporanHarianCreate(BaseModel):
 
 ---
 
-## `app/services/auth_service.py`
+## 19. `app/services/auth_service.py`
 
 ```python
 from fastapi import HTTPException, status
@@ -665,24 +655,32 @@ def proses_login_supir(data_login: UserLogin):
             "bus": db_user["bus"],
         },
     }
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/services/laporan_service.py`
+## 20. `app/services/laporan_service.py`
 
 ```python
 from fastapi import HTTPException, status
+from datetime import datetime, timezone, timedelta
 from app.db.database import supabase
 from app.schemas.laporan import LaporanHarianCreate
 from app.schemas.inspeksi import InspeksiCreate
-from app.schemas.perjalanan import TripSessionCreate
+from app.schemas.perjalanan import (
+    SesiCP1Create,
+    SesiCP2Update,
+    SesiCP3Update,
+    SesiCP4Update,
+)
+
+# Waktu WIB (UTC+7) untuk acuan backend
+WIB = timezone(timedelta(hours=7))
 
 
-# Fungsi untuk membuat entri laporan harian baru di database
+# inislaporan
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
         response = (
@@ -697,18 +695,20 @@ def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
             )
             .execute()
         )
-
         return response.data[0]
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat menyimpan inisialisasi laporan harian: {str(e)}",
+            detail=f"Gagal inisialisasi laporan: {str(e)}",
         )
 
 
-# Fungsi untuk menyimpan hasil pengecekan fisik kendaraan
+# inspeksi
 def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
+    cek = supabase.table("daily_reports").select("id").eq("id", laporan_id).execute()
+    if not cek.data:
+        raise HTTPException(status_code=404, detail="Laporan harian belum dibuat!")
+
     try:
         response = (
             supabase.table("inspections")
@@ -729,72 +729,197 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
             )
             .execute()
         )
-
         return response.data[0]
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat menyimpan data inspeksi kendaraan: {str(e)}",
+            detail=f"Gagal simpan inspeksi: {str(e)}",
         )
 
 
-# fungsi untuk menyimpan sesi perjalanan
-def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
-    # ─── LOGIKA: EVALUASI KETERLAMBATAN OTOMATIS ──────────────────────
-    status_telat = "TEPAT WAKTU"
+# sesicp1
+def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
+    cek = supabase.table("daily_reports").select("id").eq("id", laporan_id).execute()
+    if not cek.data:
+        raise HTTPException(status_code=404, detail="Laporan harian tidak valid.")
 
-    if data.jam_berangkat_start:
-        jam_bersih = (
-            data.jam_berangkat_start.replace(" WIB", "").replace(" wib", "").strip()
-        )
+    waktu_sekarang = datetime.now(WIB)
+    jam_teks = waktu_sekarang.strftime("%H:%M")
 
-        if data.tipe_sesi.upper() == "PAGI":
-            if jam_bersih > "06:15":
-                status_telat = "TERLAMBAT"
+    # Radar Cek Keterlambatan Keluar Garasi (CP1)
+    status_waktu = "TEPAT WAKTU"
+    laporan = (
+        supabase.table("daily_reports").select("trayek").eq("id", laporan_id).execute()
+    )
+    trayek = laporan.data[0]["trayek"]
 
-        elif data.tipe_sesi.upper() == "SIANG":
-            if jam_bersih > "15:00":
-                status_telat = "TERLAMBAT"
+    jadwal = (
+        supabase.table("schedules")
+        .select("batas_keluar_dishub")
+        .ilike("trayek", trayek)
+        .eq("tipe_sesi", data.tipe_sesi.upper())
+        .execute()
+    )
 
-    # ─── PROSES: PENYIMPANAN DATA KE DATABASE ─────────────────────────
+    if jadwal.data and jadwal.data[0].get("batas_keluar_dishub"):
+        batas_maksimal = jadwal.data[0]["batas_keluar_dishub"]
+        if jam_teks > batas_maksimal:
+            status_waktu = "TERLAMBAT"
+
     try:
         response = (
             supabase.table("trip_sessions")
             .insert(
                 {
                     "laporan_id": laporan_id,
-                    "tipe_sesi": data.tipe_sesi,
-                    "jam_berangkat_kantor": data.jam_berangkat_kantor,
+                    "tipe_sesi": data.tipe_sesi.upper(),
+                    "nopol_kendaraan": data.nopol_kendaraan,
                     "km_berangkat_kantor": data.km_berangkat_kantor,
-                    "jam_berangkat_start": data.jam_berangkat_start,
-                    "km_berangkat_start": data.km_berangkat_start,
-                    "jam_tiba_finish": data.jam_tiba_finish,
-                    "km_tiba_finish": data.km_tiba_finish,
-                    "jumlah_penumpang": data.jumlah_penumpang,
-                    "jam_tiba_kantor": data.jam_tiba_kantor,
-                    "km_tiba_kantor": data.km_tiba_kantor,
-                    "status_waktu": status_telat,
+                    "foto_awal": data.foto_awal,
+                    "jam_berangkat_kantor": waktu_sekarang.isoformat(),
+                    "status_waktu": status_waktu,
                 }
             )
             .execute()
         )
-
-        return response.data[0]
-
+        return {"pesan": "Check Point 1 Selesai", "data": response.data[0]}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal CP1: {str(e)}")
+
+
+# sesicp2
+def proses_cp2(sesi_id: str, data: SesiCP2Update, email_supir: str):
+    # validasi cp1
+    sesi = (
+        supabase.table("trip_sessions")
+        .select("laporan_id, tipe_sesi, jam_berangkat_kantor, status_waktu")
+        .eq("id", sesi_id)
+        .execute()
+    )
+
+    if not sesi.data or not sesi.data[0].get("jam_berangkat_kantor"):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat merekam data sesi perjalanan: {str(e)}",
+            status_code=403, detail="Gagal: Selesaikan Check Point 1 terlebih dahulu!"
         )
 
+    tipe_sesi = sesi.data[0]["tipe_sesi"]
+    laporan_id = sesi.data[0]["laporan_id"]
+    status_waktu_bawaan = sesi.data[0].get(
+        "status_waktu", "TEPAT WAKTU"
+    )  # ambil dari cp1
+
+    waktu_sekarang = datetime.now(WIB)
+    jam_teks = waktu_sekarang.strftime("%H:%M")
+
+    # otomatisasi cek keterlambatan halte cp2
+    laporan = (
+        supabase.table("daily_reports").select("trayek").eq("id", laporan_id).execute()
+    )
+    trayek = laporan.data[0]["trayek"]
+    jadwal = (
+        supabase.table("schedules")
+        .select("batas_tiba_start")
+        .ilike("trayek", trayek)
+        .eq("tipe_sesi", tipe_sesi)
+        .execute()
+    )
+
+    if jadwal.data and jadwal.data[0].get("batas_tiba_start"):
+        batas_maksimal = jadwal.data[0]["batas_tiba_start"]
+        if jam_teks > batas_maksimal:
+            status_waktu_bawaan = "TERLAMBAT"
+
+    try:
+        response = (
+            supabase.table("trip_sessions")
+            .update(
+                {
+                    "km_berangkat_start": data.km_berangkat_start,
+                    "jam_berangkat_start": waktu_sekarang.isoformat(),
+                    "status_waktu": status_waktu_bawaan,
+                }
+            )
+            .eq("id", sesi_id)
+            .execute()
+        )
+        return {"pesan": "Check Point 2 Selesai", "data": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal CP2: {str(e)}")
+
+
+# sesicp3
+def proses_cp3(sesi_id: str, data: SesiCP3Update, email_supir: str):
+    # validasi cp2
+    sesi = (
+        supabase.table("trip_sessions")
+        .select("jam_berangkat_start")
+        .eq("id", sesi_id)
+        .execute()
+    )
+    if not sesi.data or not sesi.data[0].get("jam_berangkat_start"):
+        raise HTTPException(
+            status_code=403,
+            detail="Gagal: Selesaikan Check Point 2 (Tiba di Halte) terlebih dahulu!",
+        )
+
+    waktu_sekarang = datetime.now(WIB).isoformat()
+    try:
+        response = (
+            supabase.table("trip_sessions")
+            .update(
+                {
+                    "km_tiba_finish": data.km_tiba_finish,
+                    "jumlah_penumpang": data.jumlah_penumpang,
+                    "jam_tiba_finish": waktu_sekarang,
+                }
+            )
+            .eq("id", sesi_id)
+            .execute()
+        )
+        return {"pesan": "Check Point 3 Selesai", "data": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal CP3: {str(e)}")
+
+
+# sesicp4
+def proses_cp4(sesi_id: str, data: SesiCP4Update, email_supir: str):
+    # Validasi CP3
+    sesi = (
+        supabase.table("trip_sessions")
+        .select("jam_tiba_finish")
+        .eq("id", sesi_id)
+        .execute()
+    )
+    if not sesi.data or not sesi.data[0].get("jam_tiba_finish"):
+        raise HTTPException(
+            status_code=403,
+            detail="Gagal: Selesaikan Check Point 3 (Selesai Rute) terlebih dahulu!",
+        )
+
+    waktu_sekarang = datetime.now(WIB).isoformat()
+    try:
+        response = (
+            supabase.table("trip_sessions")
+            .update(
+                {
+                    "km_tiba_kantor": data.km_tiba_kantor,
+                    "foto_akhir": data.foto_akhir,
+                    "jam_tiba_kantor": waktu_sekarang,
+                }
+            )
+            .eq("id", sesi_id)
+            .execute()
+        )
+        return {"pesan": "Shift Laporan Selesai & Ditutup!", "data": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal CP4: {str(e)}")
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/api/__init__.py`
+## 21. `app/api/__init__.py`
 
 ```python
 
@@ -804,7 +929,7 @@ def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
 
 ---
 
-## `app/api/routes/__init__.py`
+## 22. `app/api/routes/__init__.py`
 
 ```python
 
@@ -814,7 +939,7 @@ def create_sesi_perjalanan(laporan_id: str, data: TripSessionCreate):
 
 ---
 
-## `app/api/routes/auth.py`
+## 23. `app/api/routes/auth.py`
 
 ```python
 from fastapi import APIRouter
@@ -827,18 +952,17 @@ router = APIRouter()
 def login(data: UserLogin):
     hasil_login = proses_login_supir(data)
     return hasil_login
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/api/routes/admin.py`
+## 24. `app/api/routes/admin.py`
 
 ```python
-
 from io import BytesIO
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -846,6 +970,7 @@ import jwt
 import pandas as pd
 from app.core.config import settings
 from app.db.database import supabase
+from datetime import date
 from app.schemas.user import UserRegister, UserUpdate
 from app.schemas.jadwal import JadwalCreate, JadwalUpdate
 from app.core.security import get_password_hash
@@ -854,110 +979,144 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ─── FUNGSI KEAMANAN: VERIFIKASI HAK AKSES ADMIN ──────────────────────
+# verifikasiadmin
 def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    Fungsi otorisasi khusus (Role-Based Access Control) untuk Administrator.
-    Memvalidasi keberadaan token sekaligus memastikan 'role' pengguna adalah 'admin'.
-    """
     token = credentials.credentials
     try:
-        # Dekode token JWT
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-
         email_user = payload.get("sub")
         role_user = payload.get("role")
 
-        # Validasi Role: Jika bukan admin, tolak akses (403 Forbidden)
         if role_user != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Akses ditolak. Endpoint ini secara eksklusif hanya untuk Administrator.",
+                detail="Akses ditolak. Eksklusif untuk Administrator.",
             )
-
         return email_user
-
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sesi telah kedaluwarsa. Silakan login kembali.",
-        )
+        raise HTTPException(status_code=401, detail="Sesi kedaluwarsa.")
     except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token autentikasi tidak valid atau telah dimanipulasi.",
-        )
+        raise HTTPException(status_code=401, detail="Token tidak valid.")
 
 
-# ─── ENDPOINT: DASHBOARD ADMIN (TESTING) ──────────────────────────────
+# dashboard
 @router.get("/dashboard")
 def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Endpoint uji coba untuk memastikan verifikasi Admin berjalan dengan baik.
-    """
-    return {"pesan": f"Selamat datang di Dasbor VIP, {email_admin}!"}
+    try:
+        tanggal_hari_ini = str(date.today())
+
+        users_res = (
+            supabase.table("users").select("id").eq("role", "pengemudi").execute()
+        )
+        total_supir = len(users_res.data)
+
+        reports_res = (
+            supabase.table("daily_reports")
+            .select("id, id_supir, trip_sessions(status_waktu)")
+            .eq("tanggal", tanggal_hari_ini)
+            .execute()
+        )
+        data_laporan_hari_ini = reports_res.data
+
+        total_jalan = len(data_laporan_hari_ini)
+        total_absen = max(0, total_supir - total_jalan)
+
+        total_telat = 0
+        for laporan in data_laporan_hari_ini:
+            sesi_list = laporan.get("trip_sessions", [])
+            for sesi in sesi_list:
+                if sesi.get("status_waktu") == "TERLAMBAT":
+                    total_telat += 1
+                    break
+
+        return {
+            "pesan": "Metrik dashboard ditarik.",
+            "data": {
+                "tanggal": tanggal_hari_ini,
+                "total_supir_terdaftar": total_supir,
+                "total_supir_jalan": total_jalan,
+                "total_supir_absen": total_absen,
+                "total_supir_telat": total_telat,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal hitung metrik: {str(e)}")
 
 
-# ─── ENDPOINT: REKAPITULASI DATA (HALAMAN ADMIN) ──────────────────────
+# rekap
 @router.get("/rekap")
 def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik seluruh data laporan harian, termasuk detail inspeksi
-    dan sesi perjalanan pengemudi. Data ini digunakan untuk
-    ditampilkan pada tabel antarmuka dasbor Administrator.
-    """
     try:
-        # Menarik data laporan utama beserta relasinya (inspeksi dan sesi)
-        # Tanda (*) di dalam kurung berarti menarik semua kolom dari tabel terkait
         response = (
             supabase.table("daily_reports")
             .select("*, inspections(*), trip_sessions(*)")
             .execute()
         )
-
         return {
-            "pesan": "Data rekapitulasi berhasil ditarik.",
+            "pesan": "Rekapitulasi ditarik.",
             "total_data": len(response.data),
             "data": response.data,
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat menarik data rekapitulasi: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: UNDUH LAPORAN EXCEL (.xlsx) ────────────────────────────
-@router.get("/export-excel")
-def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Mengonversi data laporan operasional menjadi format file Excel (.xlsx)
-    yang siap diunduh oleh Administrator.
-    """
+# riwayatharian
+@router.get("/riwayat-harian")
+def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
     try:
-        # 1. Menarik data laporan utama beserta relasinya
+        # Ambil laporan + nama supir + status waktu, urutkan dari terbaru
         response = (
             supabase.table("daily_reports")
-            .select("*, inspections(*), trip_sessions(*)")
+            .select("*, users(nama), trip_sessions(status_waktu, tipe_sesi)")
+            .order("tanggal", desc=True)
             .execute()
         )
 
+        # Algoritma grouping per tanggal buat frontend
+        grup_tanggal = {}
+        for laporan in response.data:
+            tgl = laporan.get("tanggal")
+            if tgl not in grup_tanggal:
+                grup_tanggal[tgl] = []
+            grup_tanggal[tgl].append(laporan)
+
+        hasil_format = [
+            {"tanggal": tgl, "laporan": isi} for tgl, isi in grup_tanggal.items()
+        ]
+
+        return {"pesan": "Riwayat harian ditarik.", "data": hasil_format}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# exportexcel
+@router.get("/export-excel")
+def export_rekap_excel(
+    id_supir: Optional[str] = None, email_admin: str = Depends(verifikasi_admin)
+):
+    try:
+        query = supabase.table("daily_reports").select(
+            "*, inspections(*), trip_sessions(*)"
+        )
+
+        # Filter jika mau export personal
+        if id_supir:
+            query = query.eq("id_supir", id_supir)
+
+        response = query.execute()
         data_laporan = response.data
 
         if not data_laporan:
-            raise HTTPException(status_code=404, detail="Data laporan masih kosong.")
+            raise HTTPException(status_code=404, detail="Data laporan kosong.")
 
-        # 2. Menyiapkan kerangka data (struktur baris dan kolom) untuk Excel
         tabel_excel = []
-
         for baris in data_laporan:
-            # Mengambil sesi perjalanan pertama untuk simplifikasi laporan
             sesi_list = baris.get("trip_sessions", [])
             sesi = sesi_list[0] if sesi_list else {}
 
-            # Memetakan kolom sesuai kebutuhan instansi
             tabel_excel.append(
                 {
                     "Tanggal Operasional": baris.get("tanggal"),
@@ -971,38 +1130,26 @@ def export_rekap_excel(email_admin: str = Depends(verifikasi_admin)):
                 }
             )
 
-        # 3. Mengonversi data kerangka menjadi DataFrame Pandas (Tabel Virtual)
         df = pd.DataFrame(tabel_excel)
-
-        # 4. Membuat file Excel di dalam memori sistem (RAM) tanpa menyimpannya di hard disk
         buffer = BytesIO()
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Rekap_Laporan_Siclus")
+            df.to_excel(writer, index=False, sheet_name="Rekap_Siclus")
 
-        buffer.seek(0)  # Mengembalikan pointer memori ke awal file
+        buffer.seek(0)
+        nama_file = f"Rekap_{id_supir}.xlsx" if id_supir else "Rekap_Semua_Supir.xlsx"
 
-        # 5. Mengirimkan file Excel sebagai bentuk unduhan (attachment)
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": "attachment; filename=Rekap_Laporan_Siclus.xlsx"
-            },
+            headers={"Content-Disposition": f"attachment; filename={nama_file}"},
         )
-
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Terjadi kesalahan teknis saat membuat dokumen Excel: {str(e)}",
-        )
+        raise HTTPException(status_code=500, detail=f"Gagal export: {str(e)}")
 
 
-# ─── ENDPOINT: LIHAT SEMUA AKUN SUPIR (READ) ──────────────────────────
+# getusers
 @router.get("/users")
 def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik seluruh daftar pengguna yang memiliki role sebagai 'pengemudi'.
-    """
     try:
         response = (
             supabase.table("users")
@@ -1010,35 +1157,35 @@ def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
             .eq("role", "pengemudi")
             .execute()
         )
-
         return {
-            "pesan": "Daftar pengemudi berhasil ditarik.",
+            "pesan": "Daftar pengemudi ditarik.",
             "total": len(response.data),
             "data": response.data,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: TAMBAH AKUN SUPIR BARU (CREATE) ────────────────────────
+# postusers
 @router.post("/users")
 def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_admin)):
-    """
-    Mendaftarkan akun pengemudi baru. Kata sandi akan dienkripsi (hashing)
-    sebelum disimpan ke dalam database.
-    """
-    try:
-        # Enkripsi password sebelum masuk database
-        hashed_pw = get_password_hash(data.password)
+    if not data.id.strip() or not data.email.strip() or not data.password.strip():
+        raise HTTPException(status_code=400, detail="Data tidak boleh kosong.")
 
+    if supabase.table("users").select("id").eq("id", data.id).execute().data:
+        raise HTTPException(status_code=400, detail="ID sudah terdaftar.")
+    if supabase.table("users").select("id").eq("email", data.email).execute().data:
+        raise HTTPException(status_code=400, detail="Email sudah dipakai.")
+
+    try:
         response = (
             supabase.table("users")
             .insert(
                 {
                     "id": data.id,
-                    "nama": data.nama_lengkap,  # Mapping dari schema ke kolom database
+                    "nama": data.nama_lengkap,
                     "email": data.email,
-                    "password": hashed_pw,
+                    "password": get_password_hash(data.password),
                     "role": data.role,
                     "trayek": data.trayek,
                     "bus": data.bus,
@@ -1046,110 +1193,67 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
             )
             .execute()
         )
-
-        # Hapus tampilan password di response demi keamanan
         user_terdaftar = response.data[0]
         user_terdaftar.pop("password", None)
-
-        return {"pesan": "Akun pengemudi berhasil dibuat.", "data": user_terdaftar}
+        return {"pesan": "Akun dibuat.", "data": user_terdaftar}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menambah supir: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: EDIT DATA SUPIR (UPDATE) ───────────────────────────────
+# putusers
 @router.put("/users/{user_id}")
 def edit_data_supir(
     user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
 ):
-    """
-    Memperbarui data penugasan atau profil pengemudi berdasarkan ID.
-    """
     try:
-        # Hanya ambil data yang diisi oleh Admin (tidak None)
-        update_data = {}
-        if data.nama_lengkap:
-            update_data["nama"] = data.nama_lengkap
-        if data.email:
-            update_data["email"] = data.email
-        if data.trayek:
-            update_data["trayek"] = data.trayek
-        if data.bus:
-            update_data["bus"] = data.bus
-
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
-            raise HTTPException(
-                status_code=400, detail="Tidak ada data yang dikirim untuk diubah."
-            )
+            raise HTTPException(status_code=400, detail="Tidak ada data diubah.")
+
+        if "nama_lengkap" in update_data:
+            update_data["nama"] = update_data.pop("nama_lengkap")
 
         response = (
             supabase.table("users").update(update_data).eq("id", user_id).execute()
         )
-
         if not response.data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
-            )
-
-        return {
-            "pesan": "Data pengemudi berhasil diperbarui.",
-            "data": response.data[0],
-        }
-    except HTTPException as e:
-        raise e
+            raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
+        return {"pesan": "Data diperbarui.", "data": response.data[0]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal memperbarui data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: HAPUS AKUN SUPIR (DELETE) ──────────────────────────────
+# deleteusers
 @router.delete("/users/{user_id}")
 def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menghapus akun pengemudi dari sistem secara permanen berdasarkan ID.
-    """
     try:
         response = supabase.table("users").delete().eq("id", user_id).execute()
-
         if not response.data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pengemudi dengan ID {user_id} tidak ditemukan.",
-            )
-
-        return {
-            "pesan": f"Akun pengemudi dengan ID {user_id} berhasil dihapus permanen."
-        }
-    except HTTPException as e:
-        raise e
+            raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
+        return {"pesan": f"Akun {user_id} dihapus."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menghapus supir: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: LIHAT SEMUA JADWAL (READ) ──────────────────────────────
+# getjadwal
 @router.get("/jadwal")
 def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
-    """
-    Menarik semua data batas waktu operasional (cut-off time) dari seluruh trayek.
-    """
     try:
         response = supabase.table("schedules").select("*").order("trayek").execute()
         return {
-            "pesan": "Daftar jadwal operasional berhasil ditarik.",
+            "pesan": "Jadwal ditarik.",
             "total": len(response.data),
             "data": response.data,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Terjadi kesalahan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: BIKIN JADWAL BARU (CREATE) ─────────────────────────────
+# postjadwal
 @router.post("/jadwal")
 def tambah_jadwal_baru(
     data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
 ):
-    """
-    Menambahkan aturan batas waktu baru untuk sebuah trayek dan sesi tertentu.
-    """
     try:
         response = (
             supabase.table("schedules")
@@ -1163,35 +1267,20 @@ def tambah_jadwal_baru(
             )
             .execute()
         )
-
-        return {
-            "pesan": "Jadwal operasional baru berhasil ditambahkan.",
-            "data": response.data[0],
-        }
+        return {"pesan": "Jadwal ditambahkan.", "data": response.data[0]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal menambah jadwal: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ENDPOINT: EDIT JADWAL (UPDATE) ───────────────────────────────────
+# putjadwal
 @router.put("/jadwal/{jadwal_id}")
 def edit_jadwal(
     jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
 ):
-    """
-    Memperbarui batas waktu toleransi pada jadwal yang sudah ada berdasarkan ID.
-    """
     try:
-        update_data = {}
-        if data.batas_keluar_dishub:
-            update_data["batas_keluar_dishub"] = data.batas_keluar_dishub
-        if data.batas_tiba_start:
-            update_data["batas_tiba_start"] = data.batas_tiba_start
-
+        update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
-            raise HTTPException(
-                status_code=400,
-                detail="Tidak ada data waktu yang dikirim untuk diubah.",
-            )
+            raise HTTPException(status_code=400, detail="Tidak ada data diubah.")
 
         response = (
             supabase.table("schedules")
@@ -1199,30 +1288,18 @@ def edit_jadwal(
             .eq("id", jadwal_id)
             .execute()
         )
-
         if not response.data:
-            raise HTTPException(
-                status_code=404, detail=f"Jadwal dengan ID {jadwal_id} tidak ditemukan."
-            )
-
-        return {
-            "pesan": "Batas waktu jadwal berhasil diperbarui.",
-            "data": response.data[0],
-        }
-    except HTTPException as e:
-        raise e
+            raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan.")
+        return {"pesan": "Jadwal diperbarui.", "data": response.data[0]}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Gagal memperbarui jadwal: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=str(e))
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/api/routes/driver.py`
+## 25. `app/api/routes/driver.py`
 
 ```python
 from typing import Any
@@ -1442,14 +1519,13 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat menarik jadwal operasional: {str(e)}",
         )
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
 
 ---
 
-## `app/api/routes/laporan.py`
+## 26. `app/api/routes/laporan.py`
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
@@ -1459,11 +1535,19 @@ import time
 
 from app.schemas.laporan import LaporanHarianCreate
 from app.schemas.inspeksi import InspeksiCreate
-from app.schemas.perjalanan import TripSessionCreate
+from app.schemas.perjalanan import (
+    SesiCP1Create,
+    SesiCP2Update,
+    SesiCP3Update,
+    SesiCP4Update,
+)
 from app.services.laporan_service import (
     create_laporan_harian,
     create_inspeksi_kendaraan,
-    create_sesi_perjalanan,
+    proses_cp1,
+    proses_cp2,
+    proses_cp3,
+    proses_cp4,
 )
 from app.core.config import settings
 from app.db.database import supabase
@@ -1472,12 +1556,8 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN JWT ────────────────────────────
+# verifikasitoken
 def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    Fungsi otorisasi yang dieksekusi sebelum endpoint utama diproses.
-    Bertugas melakukan dekode JWT dan memvalidasi kredensial pengguna.
-    """
     token = credentials.credentials
     try:
         payload = jwt.decode(
@@ -1490,8 +1570,6 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Kredensial tidak valid. Payload token kosong.",
             )
-
-        # Mengembalikan email pengemudi jika autentikasi berhasil
         return email_supir
 
     except jwt.ExpiredSignatureError:
@@ -1506,54 +1584,59 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# ─── ENDPOINT: INISIALISASI LAPORAN HARIAN ────────────────────────────
+# inislaporan
 @router.post("/mulai")
 def mulai_laporan(
     data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Membuat entri data awal untuk laporan harian operasional pengemudi.
-    """
-    hasil = create_laporan_harian(data, email_supir)
-    return hasil
+    return create_laporan_harian(data, email_supir)
 
 
-# ─── ENDPOINT: PENGISIAN DATA INSPEKSI ────────────────────────────────
+# inspeksi
 @router.post("/inspeksi")
 def inspeksi_kendaraan(
     laporan_id: str, data: InspeksiCreate, email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Menyimpan hasil pemeriksaan kelaikan kondisi fisik kendaraan.
-    """
-    hasil = create_inspeksi_kendaraan(laporan_id, data)
-    return hasil
+    return create_inspeksi_kendaraan(laporan_id, data)
 
 
-# ─── ENDPOINT: PENGISIAN SESI PERJALANAN ──────────────────────────────
-@router.post("/sesi")
-def sesi_perjalanan(
-    laporan_id: str,
-    data: TripSessionCreate,
-    email_supir: str = Depends(verifikasi_token),
+# sesicp1
+@router.post("/sesi/cp1")
+def sesi_checkpoint_1(
+    laporan_id: str, data: SesiCP1Create, email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Merekam data odometer dan waktu operasi untuk rute perjalanan pengemudi.
-    """
-    hasil = create_sesi_perjalanan(laporan_id, data)
-    return hasil
+    return proses_cp1(laporan_id, data, email_supir)
 
 
-# ─── ENDPOINT: UNGGAH FOTO KEHADIRAN (SELFIE) ─────────────────────────
+# sesicp2
+@router.put("/sesi/cp2/{sesi_id}")
+def sesi_checkpoint_2(
+    sesi_id: str, data: SesiCP2Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp2(sesi_id, data, email_supir)
+
+
+# sesicp3
+@router.put("/sesi/cp3/{sesi_id}")
+def sesi_checkpoint_3(
+    sesi_id: str, data: SesiCP3Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp3(sesi_id, data, email_supir)
+
+
+# sesicp4
+@router.put("/sesi/cp4/{sesi_id}")
+def sesi_checkpoint_4(
+    sesi_id: str, data: SesiCP4Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp4(sesi_id, data, email_supir)
+
+
+# uploadselfie
 @router.post("/upload-selfie")
 async def upload_selfie(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
 ):
-    """
-    Menerima file gambar (selfie) untuk validasi kehadiran,
-    mengunggahnya ke infrastruktur penyimpanan (Storage),
-    dan mengembalikan URL akses publik.
-    """
     try:
         ekstensi = foto.filename.split(".")[-1].lower()
         if ekstensi not in ["jpg", "jpeg", "png"]:
@@ -1567,7 +1650,7 @@ async def upload_selfie(
 
         isi_gambar = await foto.read()
 
-        response = supabase.storage.from_("selfie_driver").upload(
+        supabase.storage.from_("selfie_driver").upload(
             file=isi_gambar,
             path=nama_file_baru,
             file_options={"content-type": foto.content_type},
@@ -1589,9 +1672,6 @@ async def upload_selfie(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat mengunggah foto: {str(e)}",
         )
-
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
-
----

@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from app.schemas.user import UserLogin
-from app.core.security import create_access_token
+from app.core.security import create_access_token, verify_password
 from app.db.database import supabase
 
 
@@ -12,7 +12,7 @@ def proses_login_supir(data_login: UserLogin):
         )
         db_user_list = response.data
     except Exception as e:
-        # Mengembalikan pesan error aktual dari server database untuk keperluan debugging
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan pada koneksi database: {str(e)}",
@@ -28,15 +28,15 @@ def proses_login_supir(data_login: UserLogin):
 
     db_user = db_user_list[0]
 
-    # 3. Validasi Kata Sandi (Tanpa Enkripsi - Mode Pengembangan)
-    if data_login.password != db_user["password"]:
+    # 3. Validasi Kata Sandi
+    if not verify_password(data_login.password, db_user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Kredensial tidak valid. Kata sandi salah.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 4. Pembuatan Token Akses (JWT)
+    # 4. Token Akses (JWT)
     isi_tiket = {"sub": db_user["email"], "role": db_user["role"]}
     token_jwt = create_access_token(data=isi_tiket)
 
