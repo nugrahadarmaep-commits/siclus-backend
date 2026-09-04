@@ -11,12 +11,11 @@ app = FastAPI(
     description="API Endpoint untuk Sistem Inspeksi & Catatan Laporan Sopir",
     version="1.0.0",
 )
-
-# note konfigur fe
+# konfigur cors fe
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Mengizinkan semua domain (port 5173 dll) untuk fe
-    allow_credentials=True,
+    allow_origins=["*"],  
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -12,7 +12,7 @@ class Settings:
         "SECRET_KEY", "kunci-rahasia-siclus-dishub-mojokerto-2026"
     )
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 12
 
 
 settings = Settings()

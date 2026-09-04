@@ -1,6 +1,6 @@
 # SICLUS Backend - Source Code Documentation
 
-Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru murni tanpa modifikasi.
+Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru (Update 2 September 2026) murni tanpa modifikasi kode.
 
 ---
 
@@ -260,12 +260,11 @@ app = FastAPI(
     description="API Endpoint untuk Sistem Inspeksi & Catatan Laporan Sopir",
     version="1.0.0",
 )
-
-# note konfigur fe
+# konfigur cors fe
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Mengizinkan semua domain (port 5173 dll) untuk fe
-    allow_credentials=True,
+    allow_origins=["*"],  
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -430,7 +429,7 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-# ─── SCHEMA: DATA LOGIN PENGGUNA (REQUEST) ────────────────────────────
+# ─── SCHEMA: DATA LOGIN PENGGUNA (REQUEST) ────────────────────
 # Skema ini memastikan data yang dikirim dari Frontend (Cevin)
 # wajib memiliki format email yang valid dan password.
 class UserLogin(BaseModel):
@@ -438,7 +437,7 @@ class UserLogin(BaseModel):
     password: str
 
 
-# ─── SCHEMA: PROFIL PENGGUNA (RESPONSE) ───────────────────────────────
+# ─── SCHEMA: PROFIL PENGGUNA (RESPONSE) ───────────────────────
 # Skema ini mengatur data apa saja yang boleh dikembalikan ke Frontend.
 # Sistem secara ketat menghilangkan password demi keamanan.
 class UserResponse(BaseModel):
@@ -454,7 +453,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ─── SCHEMA: REGISTRASI SUPIR BARU (REGISTER) ─────────────────────────
+# ─── SCHEMA: REGISTRASI SUPIR BARU (REGISTER) ─────────────────
 # Skema ini bakal dipake sama Admin buat masukin data supir baru ke sistem
 class UserRegister(BaseModel):
     id: str
@@ -465,7 +464,7 @@ class UserRegister(BaseModel):
     trayek: Optional[str] = None
     bus: Optional[str] = None
 
-# ─── SCHEMA: EDIT DATA SUPIR (UPDATE) ─────────────────────────────────
+# ─── SCHEMA: EDIT DATA SUPIR (UPDATE) ─────────────────────────
 # Semua field bersifat opsional (Optional) karena Admin mungkin
 # hanya ingin mengubah satu data saja (misal: ganti rute trayek).
 class UserUpdate(BaseModel):
@@ -513,7 +512,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-# ─── SCHEMA: PEMBUATAN JADWAL BARU (CREATE) ───────────────────────────
+# ─── SCHEMA: PEMBUATAN JADWAL BARU (CREATE) ───────────────────
 class JadwalCreate(BaseModel):
     trayek: str
     tipe_sesi: str
@@ -521,7 +520,7 @@ class JadwalCreate(BaseModel):
     batas_tiba_start: str
 
 
-# ─── SCHEMA: PEMBARUAN JADWAL (UPDATE) ────────────────────────────────
+# ─── SCHEMA: PEMBARUAN JADWAL (UPDATE) ────────────────────────
 class JadwalUpdate(BaseModel):
     batas_keluar_dishub: Optional[str] = None
     batas_tiba_start: Optional[str] = None
@@ -573,7 +572,7 @@ from datetime import date
 from pydantic import BaseModel
 
 
-# ─── SCHEMA: INISIALISASI LAPORAN HARIAN (CREATE) ─────────────────────
+# ─── SCHEMA: INISIALISASI LAPORAN HARIAN (CREATE) ─────────────
 # Skema ini adalah cangkang utama untuk hari tersebut.
 # ID Supir tidak perlu dikirim dari Frontend karena akan diambil otomatis
 # dari tiket JWT (Token) demi keamanan.
@@ -602,7 +601,7 @@ class LaporanHarianCreate(BaseModel):
 ```python
 from fastapi import HTTPException, status
 from app.schemas.user import UserLogin
-from app.core.security import create_access_token
+from app.core.security import create_access_token, verify_password
 from app.db.database import supabase
 
 
@@ -614,7 +613,7 @@ def proses_login_supir(data_login: UserLogin):
         )
         db_user_list = response.data
     except Exception as e:
-        # Mengembalikan pesan error aktual dari server database untuk keperluan debugging
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan pada koneksi database: {str(e)}",
@@ -630,15 +629,15 @@ def proses_login_supir(data_login: UserLogin):
 
     db_user = db_user_list[0]
 
-    # 3. Validasi Kata Sandi (Tanpa Enkripsi - Mode Pengembangan)
-    if data_login.password != db_user["password"]:
+    # 3. Validasi Kata Sandi
+    if not verify_password(data_login.password, db_user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Kredensial tidak valid. Kata sandi salah.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 4. Pembuatan Token Akses (JWT)
+    # 4. Token Akses (JWT)
     isi_tiket = {"sub": db_user["email"], "role": db_user["role"]}
     token_jwt = create_access_token(data=isi_tiket)
 
