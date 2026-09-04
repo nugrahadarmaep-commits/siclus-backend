@@ -140,9 +140,6 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     Dilengkapi sistem filter ketat untuk mencegah kebocoran data antar pengemudi.
     """
     try:
-        # Menarik data laporan utama beserta detail sesinya (Pagi/Siang).
-        # WAJIB pake .eq() buat nge-filter milik supir ini aja!
-        # Pake .order() biar laporan paling baru muncul di paling atas list FE.
         response = (
             supabase.table("daily_reports")
             .select("*, trip_sessions(*)")
