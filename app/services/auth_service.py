@@ -51,5 +51,6 @@ def proses_login_supir(data_login: UserLogin):
             "role": db_user["role"],
             "trayek": db_user["trayek"],
             "bus": db_user["bus"],
+            "foto_profil": db_user.get("foto_profil"),
         },
     }

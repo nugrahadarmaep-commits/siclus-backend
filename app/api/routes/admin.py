@@ -104,7 +104,6 @@ def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
 @router.get("/riwayat-harian")
 def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
     try:
-        # Ambil laporan + nama supir + status waktu, urutkan dari terbaru
         response = (
             supabase.table("daily_reports")
             .select("*, users(nama), trip_sessions(status_waktu, tipe_sesi)")
@@ -112,7 +111,6 @@ def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
             .execute()
         )
 
-        # Algoritma grouping per tanggal buat frontend
         grup_tanggal = {}
         for laporan in response.data:
             tgl = laporan.get("tanggal")

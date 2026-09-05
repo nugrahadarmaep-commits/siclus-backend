@@ -11,8 +11,6 @@ class UserLogin(BaseModel):
 
 
 # ─── SCHEMA: PROFIL PENGGUNA (RESPONSE) ───────────────────────────────
-# Skema ini mengatur data apa saja yang boleh dikembalikan ke Frontend.
-# Sistem secara ketat menghilangkan password demi keamanan.
 class UserResponse(BaseModel):
     id: str
     nama_lengkap: str
@@ -27,7 +25,6 @@ class UserResponse(BaseModel):
 
 
 # ─── SCHEMA: REGISTRASI SUPIR BARU (REGISTER) ─────────────────────────
-# Skema ini bakal dipake sama Admin buat masukin data supir baru ke sistem
 class UserRegister(BaseModel):
     id: str
     nama_lengkap: str
@@ -38,8 +35,6 @@ class UserRegister(BaseModel):
     bus: Optional[str] = None
 
 # ─── SCHEMA: EDIT DATA SUPIR (UPDATE) ─────────────────────────────────
-# Semua field bersifat opsional (Optional) karena Admin mungkin
-# hanya ingin mengubah satu data saja (misal: ganti rute trayek).
 class UserUpdate(BaseModel):
     nama_lengkap: Optional[str] = None
     email: Optional[EmailStr] = None

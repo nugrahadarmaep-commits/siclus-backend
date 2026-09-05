@@ -91,7 +91,7 @@ async def update_foto_profil(
     tautan (URL) foto tersebut di tabel profil pengguna.
     """
     try:
-        # 1. Validasi keamanan ekstensi file
+
         ekstensi = foto.filename.split(".")[-1].lower()
         if ekstensi not in ["jpg", "jpeg", "png"]:
             raise HTTPException(
@@ -99,11 +99,9 @@ async def update_foto_profil(
                 detail="Format tidak didukung. Gunakan JPG, JPEG, atau PNG.",
             )
 
-        # 2. Bikin nama file unik biar kaga ketumpuk
         nama_prefix = email_supir.split("@")[0]
         nama_file_baru = f"avatar_{nama_prefix}_{int(time.time())}.{ekstensi}"
 
-        # 3. Baca dan lempar gambar ke bucket 'foto_profil'
         isi_gambar = await foto.read()
         response_storage = supabase.storage.from_("foto_profil").upload(
             file=isi_gambar,
@@ -111,12 +109,10 @@ async def update_foto_profil(
             file_options={"content-type": foto.content_type},
         )
 
-        # 4. Ambil URL publiknya
         url_publik = supabase.storage.from_("foto_profil").get_public_url(
             nama_file_baru
         )
 
-        # 5. SIMPAN URL TERSEBUT KE TABEL USERS (Ini yang bedain sama selfie biasa!)
         supabase.table("users").update({"foto_profil": url_publik}).eq(
             "email", email_supir
         ).execute()
