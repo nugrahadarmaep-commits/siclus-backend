@@ -17,6 +17,20 @@ WIB = timezone(timedelta(hours=7))
 # inislaporan
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
+        # CEK EKSISTENSI LAPORAN DI HARI YANG SAMA UNTUK SUPIR INI
+        cek_laporan = (
+            supabase.table("daily_reports")
+            .select("*")
+            .eq("id_supir", id_supir)
+            .eq("tanggal", str(data.tanggal))
+            .execute()
+        )
+        
+        # JIKA SUDAH ADA (Misal: Melanjutkan shift siang), KEMBALIKAN ID LAMA
+        if cek_laporan.data:
+            return cek_laporan.data[0]
+            
+        # JIKA BELUM ADA (Awal hari / Shift Pagi), BUAT RECORD BARU
         response = (
             supabase.table("daily_reports")
             .insert(
@@ -49,7 +63,11 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
             .insert(
                 {
                     "laporan_id": laporan_id,
+<<<<<<< HEAD
                     "tipe_sesi": data.tipe_sesi.upper(),
+=======
+                    "tipe_sesi": data.tipe_sesi.upper(),  # <-- TAMBAHAN BARU
+>>>>>>> 2013a4f (chore: save progress sebelum pull)
                     "rem": data.rem,
                     "ac": data.ac,
                     "lampu": data.lampu,

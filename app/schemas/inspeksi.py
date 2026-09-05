@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 # inspeksi setiap parts kendaraan
 class InspeksiCreate(BaseModel):
+    tipe_sesi: str  # <-- TAMBAHAN BARU
     rem: str
     ac: str
     lampu: str
@@ -14,4 +15,8 @@ class InspeksiCreate(BaseModel):
     pintu: str
     kebersihan: str
     catatan: str
+<<<<<<< HEAD
     tipe_sesi: str
+=======
+    tipe_sesi: str
+>>>>>>> 2013a4f (chore: save progress sebelum pull)

@@ -136,9 +136,16 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     Dilengkapi sistem filter ketat untuk mencegah kebocoran data antar pengemudi.
     """
     try:
+<<<<<<< HEAD
         response = (
             supabase.table("daily_reports")
             .select("*, trip_sessions(*), inspections(*)")
+=======
+        # Menarik data laporan beserta sesi perjalanan DAN INPEKSI
+        response = (
+            supabase.table("daily_reports")
+            .select("*, trip_sessions(*), inspections(*)")  # <-- WAJIB TAMBAHKAN inspections(*)
+>>>>>>> 2013a4f (chore: save progress sebelum pull)
             .eq("id_supir", email_supir)
             .order("tanggal", desc=True)
             .execute()
