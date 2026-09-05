@@ -142,7 +142,7 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     try:
         response = (
             supabase.table("daily_reports")
-            .select("*, trip_sessions(*)")
+            .select("*, trip_sessions(*), inspections(*)")
             .eq("id_supir", email_supir)
             .order("tanggal", desc=True)
             .execute()
@@ -171,7 +171,6 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     berdasarkan rute/trayek yang ditugaskan kepada pengemudi saat ini.
     """
     try:
-        # 1. Cari tau dulu pengemudi ini ditugaskan di Trayek apa
         user_response = (
             supabase.table("users").select("trayek").eq("email", email_supir).execute()
         )
@@ -184,15 +183,12 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
 
         trayek_supir = user_response.data[0].get("trayek")
 
-        # Jika admin belum ngasih trayek ke supir ini
         if not trayek_supir:
             return {
                 "pesan": "Anda belum ditugaskan ke rute/trayek mana pun hari ini.",
                 "data": [],
             }
 
-        # 2. Tarik jadwal dari tabel schedules berdasarkan trayek supir
-        # Pake 'ilike' biar pencariannya kebal huruf besar/kecil (Trayek A = trayek a)
         jadwal_response = (
             supabase.table("schedules")
             .select("*")

@@ -1,6 +1,6 @@
 # SICLUS Backend - Source Code Documentation
 
-Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru (Update 2 September 2026) murni tanpa modifikasi kode.
+Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru (Update 5 September 2026, 12:49 WIB) murni tanpa modifikasi kode sumber.
 
 ---
 
@@ -109,6 +109,7 @@ dependencies = [
     "openpyxl>=3.1.5",
     "pandas>=3.0.5",
     "passlib>=1.7.4",
+    "pillow>=12.3.0",
     "pydantic>=2.13.4",
     "pyjwt>=2.13.0",
     "python-dotenv>=1.2.3",
@@ -1443,9 +1444,6 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     Dilengkapi sistem filter ketat untuk mencegah kebocoran data antar pengemudi.
     """
     try:
-        # Menarik data laporan utama beserta detail sesinya (Pagi/Siang).
-        # WAJIB pake .eq() buat nge-filter milik supir ini aja!
-        # Pake .order() biar laporan paling baru muncul di paling atas list FE.
         response = (
             supabase.table("daily_reports")
             .select("*, trip_sessions(*)")

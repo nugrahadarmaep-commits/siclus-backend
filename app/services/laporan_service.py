@@ -49,6 +49,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
             .insert(
                 {
                     "laporan_id": laporan_id,
+                    "tipe_sesi": data.tipe_sesi.upper(),
                     "rem": data.rem,
                     "ac": data.ac,
                     "lampu": data.lampu,
