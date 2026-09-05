@@ -15,8 +15,4 @@ class InspeksiCreate(BaseModel):
     pintu: str
     kebersihan: str
     catatan: str
-<<<<<<< HEAD
     tipe_sesi: str
-=======
-    tipe_sesi: str
->>>>>>> 2013a4f (chore: save progress sebelum pull)

@@ -30,7 +30,7 @@ class UserRegister(BaseModel):
     nama_lengkap: str
     email: EmailStr
     password: str
-    role: str = "pengemudi"
+    role: str = "driver"
     trayek: Optional[str] = None
     bus: Optional[str] = None
 

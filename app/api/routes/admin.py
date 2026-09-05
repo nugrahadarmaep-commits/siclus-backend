@@ -3,8 +3,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 import jwt
 import pandas as pd
+import time
 from app.core.config import settings
 from app.db.database import supabase
 from datetime import date
@@ -189,7 +191,7 @@ def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
         response = (
             supabase.table("users")
             .select("id, nama, email, trayek, bus, foto_profil")
-            .eq("role", "pengemudi")
+            .in_("role", ["pengemudi", "driver", "DRIVER", "Driver"])
             .execute()
         )
         return {
@@ -326,5 +328,43 @@ def edit_jadwal(
         if not response.data:
             raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan.")
         return {"pesan": "Jadwal diperbarui.", "data": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# uploadfotoadmin
+@router.put("/profil/foto")
+async def update_foto_profil_admin(
+    foto: UploadFile = File(...), email_admin: str = Depends(verifikasi_admin)
+):
+    try:
+        # 1. Validasi ekstensi
+        ekstensi = foto.filename.split(".")[-1].lower()
+        if ekstensi not in ["jpg", "jpeg", "png"]:
+            raise HTTPException(status_code=400, detail="Format tidak didukung!")
+
+        # 2. Baca file
+        isi_gambar = await foto.read()
+        
+        # 3. Bikin nama unik anti bentrok
+        nama_prefix = email_admin.split("@")[0]
+        nama_file_baru = f"admin_avatar_{nama_prefix}_{int(time.time())}.{ekstensi}"
+
+        # 4. Lempar ke Supabase Storage (kita numpang di bucket foto_profil)
+        supabase.storage.from_("foto_profil").upload(
+            file=isi_gambar,
+            path=nama_file_baru,
+            file_options={"content-type": foto.content_type},
+        )
+        
+        # 5. Dapatkan URL Publik
+        url_publik = supabase.storage.from_("foto_profil").get_public_url(nama_file_baru)
+
+        # 6. Update tabel users buat si Admin
+        supabase.table("users").update({"foto_profil": url_publik}).eq("email", email_admin).execute()
+
+        # 7. Balikin response ke Frontend! (Wajib ada key "foto_profil")
+        return {"pesan": "Foto profil admin berhasil diupdate", "foto_profil": url_publik} 
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

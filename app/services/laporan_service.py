@@ -63,11 +63,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
             .insert(
                 {
                     "laporan_id": laporan_id,
-<<<<<<< HEAD
                     "tipe_sesi": data.tipe_sesi.upper(),
-=======
-                    "tipe_sesi": data.tipe_sesi.upper(),  # <-- TAMBAHAN BARU
->>>>>>> 2013a4f (chore: save progress sebelum pull)
                     "rem": data.rem,
                     "ac": data.ac,
                     "lampu": data.lampu,
