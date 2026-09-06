@@ -11,7 +11,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN PENGEMUDI ──────────────────────
+# verifikasi token(jwt) driver 
 def verifikasi_pengemudi(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
@@ -46,7 +46,7 @@ def verifikasi_pengemudi(
         )
 
 
-# ─── ENDPOINT: DATA PROFIL PENGEMUDI ──────────────────────────────────
+# data profil driver
 @router.get("/profil")
 def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -54,7 +54,6 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     dari database berdasarkan email yang terekstrak dari Token JWT aktif.
     """
     try:
-        # Menarik data spesifik dari tabel users berdasarkan email
         response = (
             supabase.table("users")
             .select("id, nama, email, role, trayek, bus, foto_profil")
@@ -81,7 +80,7 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ─── ENDPOINT: UBAH FOTO PROFIL PENGEMUDI ─────────────────────────────
+# ubah foto profil driver
 @router.put("/profil/foto")
 async def update_foto_profil(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_pengemudi)
@@ -128,7 +127,7 @@ async def update_foto_profil(
         )
 
 
-# ─── ENDPOINT: RIWAYAT PERJALANAN PENGEMUDI ───────────────────────────
+# riwayat perjalanan driver
 @router.get("/riwayat")
 def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -159,7 +158,7 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ─── ENDPOINT: JADWAL OPERASIONAL PENGEMUDI ───────────────────────────
+# jadwal operasional driver
 @router.get("/jadwal")
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     """

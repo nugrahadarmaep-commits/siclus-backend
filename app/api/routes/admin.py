@@ -139,7 +139,6 @@ def export_rekap_excel(
             "*, inspections(*), trip_sessions(*)"
         )
 
-        # Filter jika mau export personal
         if id_supir:
             query = query.eq("id_supir", id_supir)
 
@@ -338,33 +337,34 @@ async def update_foto_profil_admin(
     foto: UploadFile = File(...), email_admin: str = Depends(verifikasi_admin)
 ):
     try:
-        # 1. Validasi ekstensi
+
         ekstensi = foto.filename.split(".")[-1].lower()
         if ekstensi not in ["jpg", "jpeg", "png"]:
             raise HTTPException(status_code=400, detail="Format tidak didukung!")
 
-        # 2. Baca file
         isi_gambar = await foto.read()
-        
-        # 3. Bikin nama unik anti bentrok
+
         nama_prefix = email_admin.split("@")[0]
         nama_file_baru = f"admin_avatar_{nama_prefix}_{int(time.time())}.{ekstensi}"
 
-        # 4. Lempar ke Supabase Storage (kita numpang di bucket foto_profil)
         supabase.storage.from_("foto_profil").upload(
             file=isi_gambar,
             path=nama_file_baru,
             file_options={"content-type": foto.content_type},
         )
-        
-        # 5. Dapatkan URL Publik
-        url_publik = supabase.storage.from_("foto_profil").get_public_url(nama_file_baru)
 
-        # 6. Update tabel users buat si Admin
-        supabase.table("users").update({"foto_profil": url_publik}).eq("email", email_admin).execute()
+        url_publik = supabase.storage.from_("foto_profil").get_public_url(
+            nama_file_baru
+        )
 
-        # 7. Balikin response ke Frontend! (Wajib ada key "foto_profil")
-        return {"pesan": "Foto profil admin berhasil diupdate", "foto_profil": url_publik} 
+        supabase.table("users").update({"foto_profil": url_publik}).eq(
+            "email", email_admin
+        ).execute()
+
+        return {
+            "pesan": "Foto profil admin berhasil diupdate",
+            "foto_profil": url_publik,
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

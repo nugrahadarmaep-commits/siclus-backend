@@ -2,9 +2,9 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-# inspeksi setiap parts kendaraan
+# inspeksi kendaraan
 class InspeksiCreate(BaseModel):
-    tipe_sesi: str  # <-- TAMBAHAN BARU
+    tipe_sesi: str
     rem: str
     ac: str
     lampu: str

@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mendaftarkan semua colokan API yang sudah dibuat
+# mendaftar semua port API
 app.include_router(auth_router, prefix="/api/auth", tags=["Autentikasi"])
 app.include_router(laporan_router, prefix="/api/laporan", tags=["Laporan Harian"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Dashboard Admin"])
@@ -30,4 +30,4 @@ app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
 # test
 @app.get("/")
 def root():
-    return {"status": "mesin siclus berjalan!"}
+    return {"status": "siclus berjalan!"}

@@ -54,7 +54,7 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# inislaporan
+# inspeksi laporan harian driver
 @router.post("/mulai")
 def mulai_laporan(
     data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
