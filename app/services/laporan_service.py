@@ -14,10 +14,9 @@ from app.schemas.perjalanan import (
 WIB = timezone(timedelta(hours=7))
 
 
-# inislaporan
+# ini laporan
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
-        # CEK EKSISTENSI LAPORAN DI HARI YANG SAMA UNTUK SUPIR INI
         cek_laporan = (
             supabase.table("daily_reports")
             .select("*")
@@ -26,11 +25,9 @@ def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
             .execute()
         )
         
-        # JIKA SUDAH ADA (Misal: Melanjutkan shift siang), KEMBALIKAN ID LAMA
         if cek_laporan.data:
             return cek_laporan.data[0]
             
-        # JIKA BELUM ADA (Awal hari / Shift Pagi), BUAT RECORD BARU
         response = (
             supabase.table("daily_reports")
             .insert(
@@ -73,7 +70,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
                     "bell": data.bell,
                     "pintu": data.pintu,
                     "kebersihan": data.kebersihan,
-                    "catatan": data.catatan,
+                    "catatan": data.catatan or "",
                 }
             )
             .execute()
@@ -111,7 +108,7 @@ def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
     )
 
     if jadwal.data and jadwal.data[0].get("batas_keluar_dishub"):
-        batas_maksimal = jadwal.data[0]["batas_keluar_dishub"]
+        batas_maksimal = str(jadwal.data[0]["batas_keluar_dishub"]).strip()[:5]
         if jam_teks > batas_maksimal:
             status_waktu = "TERLAMBAT"
 
@@ -174,7 +171,7 @@ def proses_cp2(sesi_id: str, data: SesiCP2Update, email_supir: str):
     )
 
     if jadwal.data and jadwal.data[0].get("batas_tiba_start"):
-        batas_maksimal = jadwal.data[0]["batas_tiba_start"]
+        batas_maksimal = str(jadwal.data[0]["batas_tiba_start"]).strip()[:5]
         if jam_teks > batas_maksimal:
             status_waktu_bawaan = "TERLAMBAT"
 

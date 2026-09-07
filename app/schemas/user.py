@@ -2,11 +2,10 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-# ─── SCHEMA: DATA LOGIN PENGGUNA (REQUEST) ────────────────────────────
-# Skema ini memastikan data yang dikirim dari Fe
-# wajib memiliki format email yang valid dan password.
+# Skema ini menerima email atau id pengemudi beserta password.
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None
+    id: Optional[str] = None
     password: str
 
 
@@ -40,3 +39,5 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     trayek: Optional[str] = None
     bus: Optional[str] = None
+    password: Optional[str] = None
+    

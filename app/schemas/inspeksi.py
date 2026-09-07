@@ -14,5 +14,5 @@ class InspeksiCreate(BaseModel):
     bell: str
     pintu: str
     kebersihan: str
-    catatan: str
-    tipe_sesi: str
+    catatan: Optional[str] = ""
+

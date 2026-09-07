@@ -5,30 +5,52 @@ from app.db.database import supabase
 
 
 def proses_login_supir(data_login: UserLogin):
-    # 1. Mencari data pengguna di database berdasarkan email
-    try:
-        response = (
-            supabase.table("users").select("*").eq("email", data_login.email).execute()
+    # 1. Ambil identitas login (bisa dikirim via field 'id' atau 'email')
+    login_id = (data_login.id or data_login.email or "").strip()
+    if not login_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kredensial tidak valid. ID Driver atau Email wajib diisi.",
         )
-        db_user_list = response.data
-    except Exception as e:
 
+    # 2. Mencari data pengguna di database (prioritas: jika ada '@' cari email, selain itu cari ID)
+    try:
+        if "@" in login_id:
+            response = (
+                supabase.table("users").select("*").eq("email", login_id).execute()
+            )
+        else:
+            response = (
+                supabase.table("users").select("*").eq("id", login_id).execute()
+            )
+
+        db_user_list = response.data
+
+        # Fallback pencarian silang jika percobaan pertama belum menemukan akun
+        if not db_user_list:
+            if "@" in login_id:
+                alt_response = supabase.table("users").select("*").eq("id", login_id).execute()
+            else:
+                alt_response = supabase.table("users").select("*").eq("email", login_id).execute()
+            db_user_list = alt_response.data
+
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan pada koneksi database: {str(e)}",
         )
 
-    # 2. Validasi ketersediaan email
+    # 3. Validasi ketersediaan pengguna
     if not db_user_list:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Kredensial tidak valid. Email tidak ditemukan.",
+            detail="Kredensial tidak valid. ID Driver atau Email tidak ditemukan.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     db_user = db_user_list[0]
 
-    # 3. Validasi Kata Sandi
+    # 4. Validasi Kata Sandi
     if not verify_password(data_login.password, db_user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -36,8 +58,12 @@ def proses_login_supir(data_login: UserLogin):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 4. Token Akses (JWT)
-    isi_tiket = {"sub": db_user["email"], "role": db_user["role"]}
+    # 5. Token Akses (JWT)
+    isi_tiket = {
+        "sub": db_user["email"],
+        "id": db_user["id"],
+        "role": db_user["role"],
+    }
     token_jwt = create_access_token(data=isi_tiket)
 
     # 5. Pengembalian Data Respons

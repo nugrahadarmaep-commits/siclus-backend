@@ -109,10 +109,10 @@ async def upload_selfie(
 ):
     try:
         ekstensi = foto.filename.split(".")[-1].lower()
-        if ekstensi not in ["jpg", "jpeg", "png"]:
+        if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, atau PNG.",
+                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, PNG, atau WEBP.",
             )
 
         nama_prefix = email_supir.split("@")[0]

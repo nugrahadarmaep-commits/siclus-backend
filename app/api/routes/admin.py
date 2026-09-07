@@ -47,7 +47,7 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
         tanggal_hari_ini = str(date.today())
 
         users_res = (
-            supabase.table("users").select("id").eq("role", "pengemudi").execute()
+            supabase.table("users").select("id").eq("role", "driver").execute()
         )
         total_supir = len(users_res.data)
 
@@ -90,7 +90,7 @@ def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
     try:
         response = (
             supabase.table("daily_reports")
-            .select("*, inspections(*), trip_sessions(*)")
+            .select("*, inspections(*), trip_sessions(*), users(nama, trayek, bus)")
             .execute()
         )
         return {
@@ -136,7 +136,7 @@ def export_rekap_excel(
 ):
     try:
         query = supabase.table("daily_reports").select(
-            "*, inspections(*), trip_sessions(*)"
+            "*, inspections(*), trip_sessions(*), users(nama)"
         )
 
         if id_supir:
@@ -152,11 +152,14 @@ def export_rekap_excel(
         for baris in data_laporan:
             sesi_list = baris.get("trip_sessions", [])
             sesi = sesi_list[0] if sesi_list else {}
+            user_info = baris.get("users") or {}
+            nama_driver = user_info.get("nama") or baris.get("id_supir") or "-"
 
             tabel_excel.append(
                 {
                     "Tanggal Operasional": baris.get("tanggal"),
-                    "ID Pengemudi": baris.get("id_supir"),
+                    "Nama Driver": nama_driver,
+                    "ID Driver": baris.get("id_supir"),
                     "Trayek": baris.get("trayek"),
                     "Armada Bus": baris.get("bus"),
                     "Tipe Sesi": sesi.get("tipe_sesi", "-"),
@@ -236,7 +239,7 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# putusers
+# put users
 @router.put("/users/{user_id}")
 def edit_data_supir(
     user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
@@ -249,17 +252,28 @@ def edit_data_supir(
         if "nama_lengkap" in update_data:
             update_data["nama"] = update_data.pop("nama_lengkap")
 
+        # Jika ada input password baru, hash sebelum disimpan ke database
+        if "password" in update_data:
+            pw = str(update_data["password"]).strip()
+            if pw:
+                update_data["password"] = get_password_hash(pw)
+            else:
+                update_data.pop("password")
+
         response = (
             supabase.table("users").update(update_data).eq("id", user_id).execute()
         )
         if not response.data:
             raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
-        return {"pesan": "Data diperbarui.", "data": response.data[0]}
+
+        user_diperbarui = response.data[0]
+        user_diperbarui.pop("password", None)
+        return {"pesan": "Data diperbarui.", "data": user_diperbarui}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# deleteusers
+# delete users
 @router.delete("/users/{user_id}")
 def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
     try:
@@ -271,7 +285,7 @@ def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# getjadwal
+# get jadwal
 @router.get("/jadwal")
 def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
     try:
@@ -285,7 +299,7 @@ def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# postjadwal
+# post jadwal
 @router.post("/jadwal")
 def tambah_jadwal_baru(
     data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
@@ -308,15 +322,18 @@ def tambah_jadwal_baru(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# putjadwal
+# put jadwal
 @router.put("/jadwal/{jadwal_id}")
 def edit_jadwal(
-    jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
+    jadwal_id: str, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
 ):
     try:
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
             raise HTTPException(status_code=400, detail="Tidak ada data diubah.")
+
+        if "tipe_sesi" in update_data and update_data["tipe_sesi"]:
+            update_data["tipe_sesi"] = update_data["tipe_sesi"].upper()
 
         response = (
             supabase.table("schedules")
@@ -331,6 +348,25 @@ def edit_jadwal(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# delete jadwal
+@router.delete("/jadwal/{jadwal_id}")
+def hapus_jadwal(
+    jadwal_id: str, email_admin: str = Depends(verifikasi_admin)
+):
+    try:
+        response = (
+            supabase.table("schedules")
+            .delete()
+            .eq("id", jadwal_id)
+            .execute()
+        )
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan.")
+        return {"pesan": f"Jadwal {jadwal_id} berhasil dihapus."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # uploadfotoadmin
 @router.put("/profil/foto")
 async def update_foto_profil_admin(
@@ -339,8 +375,11 @@ async def update_foto_profil_admin(
     try:
 
         ekstensi = foto.filename.split(".")[-1].lower()
-        if ekstensi not in ["jpg", "jpeg", "png"]:
-            raise HTTPException(status_code=400, detail="Format tidak didukung!")
+        if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format tidak didukung. Gunakan JPG, JPEG, PNG, atau WEBP.",
+            )
 
         isi_gambar = await foto.read()
 
