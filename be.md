@@ -1,6 +1,6 @@
 # SICLUS Backend - Source Code Documentation
 
-Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru (Update 5 September 2026, 12:49 WIB) murni tanpa modifikasi kode sumber.
+Dokumentasi lengkap seluruh file source code proyek **SICLUS Backend** terbaru (Update 7 September 2026, 11:15 WIB) murni tanpa modifikasi kode sumber.
 
 ---
 
@@ -145,9 +145,8 @@ SECRET_KEY=your-jwt-secret-key-here
 
 ```gitignore
 # ==========================================
-# 1. Environment Variables & Secrets (SANGAT KRUSIAL)
+# 1. Environment Variables & Secrets
 # ==========================================
-# Jangan pernah upload kredensial / API key / database key ke GitHub!
 .env
 .env.*
 !.env.example
@@ -158,7 +157,6 @@ SECRET_KEY=your-jwt-secret-key-here
 # ==========================================
 # 2. Virtual Environments
 # ==========================================
-# Folder dependensi lokal yang diinstall
 .venv/
 venv/
 ENV/
@@ -270,7 +268,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mendaftarkan semua colokan API yang sudah dibuat
+# mendaftar semua port API
 app.include_router(auth_router, prefix="/api/auth", tags=["Autentikasi"])
 app.include_router(laporan_router, prefix="/api/laporan", tags=["Laporan Harian"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Dashboard Admin"])
@@ -280,7 +278,7 @@ app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
 # test
 @app.get("/")
 def root():
-    return {"status": "mesin siclus berjalan!"}
+    return {"status": "siclus berjalan!"}
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
@@ -314,7 +312,7 @@ class Settings:
         "SECRET_KEY", "kunci-rahasia-siclus-dishub-mojokerto-2026"
     )
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 12
 
 
 settings = Settings()
@@ -397,15 +395,14 @@ from supabase import create_client, Client
 
 load_dotenv()
 
-# 2. Ambil alamat dan kunci rahasia dari dalem brankas
 API_URL = os.getenv("SUPABASE_URL")
 API_KEY = os.getenv("SUPABASE_KEY")
 
-# 3. Validasi biar laptop lu ngasih tau kalo kuncinya lupa ditaruh
+# testing jaga jaga takut kunci lupa di taruh mana!
 if not API_URL or not API_KEY:
-    raise Exception("WEY KUNCINYA BELOM DIMASUKIN KE .ENV TUH!")
+    raise Exception("token belum di taruh ke .env!")
 
-# 4. Bikin jembatan koneksinya!
+# koneksi api
 supabase: Client = create_client(API_URL, API_KEY)
 ```
 
@@ -430,17 +427,14 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-# ─── SCHEMA: DATA LOGIN PENGGUNA (REQUEST) ────────────────────
-# Skema ini memastikan data yang dikirim dari Frontend (Cevin)
-# wajib memiliki format email yang valid dan password.
+# Skema ini menerima email atau id pengemudi beserta password.
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None
+    id: Optional[str] = None
     password: str
 
 
-# ─── SCHEMA: PROFIL PENGGUNA (RESPONSE) ───────────────────────
-# Skema ini mengatur data apa saja yang boleh dikembalikan ke Frontend.
-# Sistem secara ketat menghilangkan password demi keamanan.
+# profil driver
 class UserResponse(BaseModel):
     id: str
     nama_lengkap: str
@@ -454,25 +448,23 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# ─── SCHEMA: REGISTRASI SUPIR BARU (REGISTER) ─────────────────
-# Skema ini bakal dipake sama Admin buat masukin data supir baru ke sistem
+# register tambah driver baru
 class UserRegister(BaseModel):
     id: str
     nama_lengkap: str
     email: EmailStr
     password: str
-    role: str = "pengemudi"
+    role: str = "driver"
     trayek: Optional[str] = None
     bus: Optional[str] = None
 
-# ─── SCHEMA: EDIT DATA SUPIR (UPDATE) ─────────────────────────
-# Semua field bersifat opsional (Optional) karena Admin mungkin
-# hanya ingin mengubah satu data saja (misal: ganti rute trayek).
+# edit data supir baru
 class UserUpdate(BaseModel):
     nama_lengkap: Optional[str] = None
     email: Optional[EmailStr] = None
     trayek: Optional[str] = None
     bus: Optional[str] = None
+    password: Optional[str] = None
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
@@ -486,8 +478,9 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-# inspeksi setiap parts kendaraan
+# inspeksi kendaraan
 class InspeksiCreate(BaseModel):
+    tipe_sesi: str
     rem: str
     ac: str
     lampu: str
@@ -497,9 +490,7 @@ class InspeksiCreate(BaseModel):
     bell: str
     pintu: str
     kebersihan: str
-
-    # opsional catatan kerusakan
-    catatan: Optional[str] = None
+    catatan: Optional[str] = ""
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
@@ -513,7 +504,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-# ─── SCHEMA: PEMBUATAN JADWAL BARU (CREATE) ───────────────────
+# create jadwal baru
 class JadwalCreate(BaseModel):
     trayek: str
     tipe_sesi: str
@@ -521,8 +512,10 @@ class JadwalCreate(BaseModel):
     batas_tiba_start: str
 
 
-# ─── SCHEMA: PEMBARUAN JADWAL (UPDATE) ────────────────────────
+# update jadwal
 class JadwalUpdate(BaseModel):
+    trayek: Optional[str] = None
+    tipe_sesi: Optional[str] = None
     batas_keluar_dishub: Optional[str] = None
     batas_tiba_start: Optional[str] = None
 ```
@@ -573,7 +566,7 @@ from datetime import date
 from pydantic import BaseModel
 
 
-# ─── SCHEMA: INISIALISASI LAPORAN HARIAN (CREATE) ─────────────
+# inisialisasi harian laporan
 # Skema ini adalah cangkang utama untuk hari tersebut.
 # ID Supir tidak perlu dikirim dari Frontend karena akan diambil otomatis
 # dari tiket JWT (Token) demi keamanan.
@@ -607,30 +600,52 @@ from app.db.database import supabase
 
 
 def proses_login_supir(data_login: UserLogin):
-    # 1. Mencari data pengguna di database berdasarkan email
-    try:
-        response = (
-            supabase.table("users").select("*").eq("email", data_login.email).execute()
+    # 1. Ambil identitas login (bisa dikirim via field 'id' atau 'email')
+    login_id = (data_login.id or data_login.email or "").strip()
+    if not login_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kredensial tidak valid. ID Driver atau Email wajib diisi.",
         )
-        db_user_list = response.data
-    except Exception as e:
 
+    # 2. Mencari data pengguna di database (prioritas: jika ada '@' cari email, selain itu cari ID)
+    try:
+        if "@" in login_id:
+            response = (
+                supabase.table("users").select("*").eq("email", login_id).execute()
+            )
+        else:
+            response = (
+                supabase.table("users").select("*").eq("id", login_id).execute()
+            )
+
+        db_user_list = response.data
+
+        # Fallback pencarian silang jika percobaan pertama belum menemukan akun
+        if not db_user_list:
+            if "@" in login_id:
+                alt_response = supabase.table("users").select("*").eq("id", login_id).execute()
+            else:
+                alt_response = supabase.table("users").select("*").eq("email", login_id).execute()
+            db_user_list = alt_response.data
+
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan pada koneksi database: {str(e)}",
         )
 
-    # 2. Validasi ketersediaan email
+    # 3. Validasi ketersediaan pengguna
     if not db_user_list:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Kredensial tidak valid. Email tidak ditemukan.",
+            detail="Kredensial tidak valid. ID Driver atau Email tidak ditemukan.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     db_user = db_user_list[0]
 
-    # 3. Validasi Kata Sandi
+    # 4. Validasi Kata Sandi
     if not verify_password(data_login.password, db_user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -638,8 +653,12 @@ def proses_login_supir(data_login: UserLogin):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 4. Token Akses (JWT)
-    isi_tiket = {"sub": db_user["email"], "role": db_user["role"]}
+    # 5. Token Akses (JWT)
+    isi_tiket = {
+        "sub": db_user["email"],
+        "id": db_user["id"],
+        "role": db_user["role"],
+    }
     token_jwt = create_access_token(data=isi_tiket)
 
     # 5. Pengembalian Data Respons
@@ -653,6 +672,7 @@ def proses_login_supir(data_login: UserLogin):
             "role": db_user["role"],
             "trayek": db_user["trayek"],
             "bus": db_user["bus"],
+            "foto_profil": db_user.get("foto_profil"),
         },
     }
 ```
@@ -680,9 +700,20 @@ from app.schemas.perjalanan import (
 WIB = timezone(timedelta(hours=7))
 
 
-# inislaporan
+# ini laporan
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
+        cek_laporan = (
+            supabase.table("daily_reports")
+            .select("*")
+            .eq("id_supir", id_supir)
+            .eq("tanggal", str(data.tanggal))
+            .execute()
+        )
+        
+        if cek_laporan.data:
+            return cek_laporan.data[0]
+            
         response = (
             supabase.table("daily_reports")
             .insert(
@@ -715,6 +746,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
             .insert(
                 {
                     "laporan_id": laporan_id,
+                    "tipe_sesi": data.tipe_sesi.upper(),
                     "rem": data.rem,
                     "ac": data.ac,
                     "lampu": data.lampu,
@@ -724,7 +756,7 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
                     "bell": data.bell,
                     "pintu": data.pintu,
                     "kebersihan": data.kebersihan,
-                    "catatan": data.catatan,
+                    "catatan": data.catatan or "",
                 }
             )
             .execute()
@@ -762,7 +794,7 @@ def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
     )
 
     if jadwal.data and jadwal.data[0].get("batas_keluar_dishub"):
-        batas_maksimal = jadwal.data[0]["batas_keluar_dishub"]
+        batas_maksimal = str(jadwal.data[0]["batas_keluar_dishub"]).strip()[:5]
         if jam_teks > batas_maksimal:
             status_waktu = "TERLAMBAT"
 
@@ -825,7 +857,7 @@ def proses_cp2(sesi_id: str, data: SesiCP2Update, email_supir: str):
     )
 
     if jadwal.data and jadwal.data[0].get("batas_tiba_start"):
-        batas_maksimal = jadwal.data[0]["batas_tiba_start"]
+        batas_maksimal = str(jadwal.data[0]["batas_tiba_start"]).strip()[:5]
         if jam_teks > batas_maksimal:
             status_waktu_bawaan = "TERLAMBAT"
 
@@ -948,6 +980,7 @@ from app.services.auth_service import proses_login_supir
 
 router = APIRouter()
 
+
 @router.post("/login")
 def login(data: UserLogin):
     hasil_login = proses_login_supir(data)
@@ -966,8 +999,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 import jwt
 import pandas as pd
+import time
 from app.core.config import settings
 from app.db.database import supabase
 from datetime import date
@@ -1008,7 +1043,7 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
         tanggal_hari_ini = str(date.today())
 
         users_res = (
-            supabase.table("users").select("id").eq("role", "pengemudi").execute()
+            supabase.table("users").select("id").eq("role", "driver").execute()
         )
         total_supir = len(users_res.data)
 
@@ -1051,7 +1086,7 @@ def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
     try:
         response = (
             supabase.table("daily_reports")
-            .select("*, inspections(*), trip_sessions(*)")
+            .select("*, inspections(*), trip_sessions(*), users(nama, trayek, bus)")
             .execute()
         )
         return {
@@ -1067,7 +1102,6 @@ def get_rekap_laporan(email_admin: str = Depends(verifikasi_admin)):
 @router.get("/riwayat-harian")
 def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
     try:
-        # Ambil laporan + nama supir + status waktu, urutkan dari terbaru
         response = (
             supabase.table("daily_reports")
             .select("*, users(nama), trip_sessions(status_waktu, tipe_sesi)")
@@ -1075,7 +1109,6 @@ def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
             .execute()
         )
 
-        # Algoritma grouping per tanggal buat frontend
         grup_tanggal = {}
         for laporan in response.data:
             tgl = laporan.get("tanggal")
@@ -1099,10 +1132,9 @@ def export_rekap_excel(
 ):
     try:
         query = supabase.table("daily_reports").select(
-            "*, inspections(*), trip_sessions(*)"
+            "*, inspections(*), trip_sessions(*), users(nama)"
         )
 
-        # Filter jika mau export personal
         if id_supir:
             query = query.eq("id_supir", id_supir)
 
@@ -1116,11 +1148,14 @@ def export_rekap_excel(
         for baris in data_laporan:
             sesi_list = baris.get("trip_sessions", [])
             sesi = sesi_list[0] if sesi_list else {}
+            user_info = baris.get("users") or {}
+            nama_driver = user_info.get("nama") or baris.get("id_supir") or "-"
 
             tabel_excel.append(
                 {
                     "Tanggal Operasional": baris.get("tanggal"),
-                    "ID Pengemudi": baris.get("id_supir"),
+                    "Nama Driver": nama_driver,
+                    "ID Driver": baris.get("id_supir"),
                     "Trayek": baris.get("trayek"),
                     "Armada Bus": baris.get("bus"),
                     "Tipe Sesi": sesi.get("tipe_sesi", "-"),
@@ -1154,7 +1189,7 @@ def get_semua_supir(email_admin: str = Depends(verifikasi_admin)):
         response = (
             supabase.table("users")
             .select("id, nama, email, trayek, bus, foto_profil")
-            .eq("role", "pengemudi")
+            .in_("role", ["pengemudi", "driver", "DRIVER", "Driver"])
             .execute()
         )
         return {
@@ -1200,7 +1235,7 @@ def tambah_supir_baru(data: UserRegister, email_admin: str = Depends(verifikasi_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# putusers
+# put users
 @router.put("/users/{user_id}")
 def edit_data_supir(
     user_id: str, data: UserUpdate, email_admin: str = Depends(verifikasi_admin)
@@ -1213,17 +1248,28 @@ def edit_data_supir(
         if "nama_lengkap" in update_data:
             update_data["nama"] = update_data.pop("nama_lengkap")
 
+        # Jika ada input password baru, hash sebelum disimpan ke database
+        if "password" in update_data:
+            pw = str(update_data["password"]).strip()
+            if pw:
+                update_data["password"] = get_password_hash(pw)
+            else:
+                update_data.pop("password")
+
         response = (
             supabase.table("users").update(update_data).eq("id", user_id).execute()
         )
         if not response.data:
             raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
-        return {"pesan": "Data diperbarui.", "data": response.data[0]}
+
+        user_diperbarui = response.data[0]
+        user_diperbarui.pop("password", None)
+        return {"pesan": "Data diperbarui.", "data": user_diperbarui}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# deleteusers
+# delete users
 @router.delete("/users/{user_id}")
 def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
     try:
@@ -1235,7 +1281,7 @@ def hapus_supir(user_id: str, email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# getjadwal
+# get jadwal
 @router.get("/jadwal")
 def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
     try:
@@ -1249,7 +1295,7 @@ def get_semua_jadwal(email_admin: str = Depends(verifikasi_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# postjadwal
+# post jadwal
 @router.post("/jadwal")
 def tambah_jadwal_baru(
     data: JadwalCreate, email_admin: str = Depends(verifikasi_admin)
@@ -1272,15 +1318,18 @@ def tambah_jadwal_baru(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# putjadwal
+# put jadwal
 @router.put("/jadwal/{jadwal_id}")
 def edit_jadwal(
-    jadwal_id: int, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
+    jadwal_id: str, data: JadwalUpdate, email_admin: str = Depends(verifikasi_admin)
 ):
     try:
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         if not update_data:
             raise HTTPException(status_code=400, detail="Tidak ada data diubah.")
+
+        if "tipe_sesi" in update_data and update_data["tipe_sesi"]:
+            update_data["tipe_sesi"] = update_data["tipe_sesi"].upper()
 
         response = (
             supabase.table("schedules")
@@ -1291,6 +1340,67 @@ def edit_jadwal(
         if not response.data:
             raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan.")
         return {"pesan": "Jadwal diperbarui.", "data": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# delete jadwal
+@router.delete("/jadwal/{jadwal_id}")
+def hapus_jadwal(
+    jadwal_id: str, email_admin: str = Depends(verifikasi_admin)
+):
+    try:
+        response = (
+            supabase.table("schedules")
+            .delete()
+            .eq("id", jadwal_id)
+            .execute()
+        )
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan.")
+        return {"pesan": f"Jadwal {jadwal_id} berhasil dihapus."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# uploadfotoadmin
+@router.put("/profil/foto")
+async def update_foto_profil_admin(
+    foto: UploadFile = File(...), email_admin: str = Depends(verifikasi_admin)
+):
+    try:
+
+        ekstensi = foto.filename.split(".")[-1].lower()
+        if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format tidak didukung. Gunakan JPG, JPEG, PNG, atau WEBP.",
+            )
+
+        isi_gambar = await foto.read()
+
+        nama_prefix = email_admin.split("@")[0]
+        nama_file_baru = f"admin_avatar_{nama_prefix}_{int(time.time())}.{ekstensi}"
+
+        supabase.storage.from_("foto_profil").upload(
+            file=isi_gambar,
+            path=nama_file_baru,
+            file_options={"content-type": foto.content_type},
+        )
+
+        url_publik = supabase.storage.from_("foto_profil").get_public_url(
+            nama_file_baru
+        )
+
+        supabase.table("users").update({"foto_profil": url_publik}).eq(
+            "email", email_admin
+        ).execute()
+
+        return {
+            "pesan": "Foto profil admin berhasil diupdate",
+            "foto_profil": url_publik,
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 ```
@@ -1315,7 +1425,7 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# ─── FUNGSI KEAMANAN: VERIFIKASI TOKEN PENGEMUDI ──────────────────────
+# verifikasi token(jwt) driver 
 def verifikasi_pengemudi(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
@@ -1350,7 +1460,7 @@ def verifikasi_pengemudi(
         )
 
 
-# ─── ENDPOINT: DATA PROFIL PENGEMUDI ──────────────────────────────────
+# data profil driver
 @router.get("/profil")
 def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -1358,7 +1468,6 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     dari database berdasarkan email yang terekstrak dari Token JWT aktif.
     """
     try:
-        # Menarik data spesifik dari tabel users berdasarkan email
         response = (
             supabase.table("users")
             .select("id, nama, email, role, trayek, bus, foto_profil")
@@ -1385,7 +1494,7 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ─── ENDPOINT: UBAH FOTO PROFIL PENGEMUDI ─────────────────────────────
+# ubah foto profil driver
 @router.put("/profil/foto")
 async def update_foto_profil(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_pengemudi)
@@ -1395,19 +1504,17 @@ async def update_foto_profil(
     tautan (URL) foto tersebut di tabel profil pengguna.
     """
     try:
-        # 1. Validasi keamanan ekstensi file
+
         ekstensi = foto.filename.split(".")[-1].lower()
-        if ekstensi not in ["jpg", "jpeg", "png"]:
+        if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format tidak didukung. Gunakan JPG, JPEG, atau PNG.",
+                detail="Format tidak didukung. Gunakan JPG, JPEG, PNG, atau WEBP.",
             )
 
-        # 2. Bikin nama file unik biar kaga ketumpuk
         nama_prefix = email_supir.split("@")[0]
         nama_file_baru = f"avatar_{nama_prefix}_{int(time.time())}.{ekstensi}"
 
-        # 3. Baca dan lempar gambar ke bucket 'foto_profil'
         isi_gambar = await foto.read()
         response_storage = supabase.storage.from_("foto_profil").upload(
             file=isi_gambar,
@@ -1415,12 +1522,10 @@ async def update_foto_profil(
             file_options={"content-type": foto.content_type},
         )
 
-        # 4. Ambil URL publiknya
         url_publik = supabase.storage.from_("foto_profil").get_public_url(
             nama_file_baru
         )
 
-        # 5. SIMPAN URL TERSEBUT KE TABEL USERS (Ini yang bedain sama selfie biasa!)
         supabase.table("users").update({"foto_profil": url_publik}).eq(
             "email", email_supir
         ).execute()
@@ -1436,7 +1541,7 @@ async def update_foto_profil(
         )
 
 
-# ─── ENDPOINT: RIWAYAT PERJALANAN PENGEMUDI ───────────────────────────
+# riwayat perjalanan driver
 @router.get("/riwayat")
 def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -1446,7 +1551,7 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     try:
         response = (
             supabase.table("daily_reports")
-            .select("*, trip_sessions(*)")
+            .select("*, trip_sessions(*), inspections(*)")
             .eq("id_supir", email_supir)
             .order("tanggal", desc=True)
             .execute()
@@ -1467,7 +1572,7 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ─── ENDPOINT: JADWAL OPERASIONAL PENGEMUDI ───────────────────────────
+# jadwal operasional driver
 @router.get("/jadwal")
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     """
@@ -1475,7 +1580,6 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     berdasarkan rute/trayek yang ditugaskan kepada pengemudi saat ini.
     """
     try:
-        # 1. Cari tau dulu pengemudi ini ditugaskan di Trayek apa
         user_response = (
             supabase.table("users").select("trayek").eq("email", email_supir).execute()
         )
@@ -1488,15 +1592,12 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
 
         trayek_supir = user_response.data[0].get("trayek")
 
-        # Jika admin belum ngasih trayek ke supir ini
         if not trayek_supir:
             return {
                 "pesan": "Anda belum ditugaskan ke rute/trayek mana pun hari ini.",
                 "data": [],
             }
 
-        # 2. Tarik jadwal dari tabel schedules berdasarkan trayek supir
-        # Pake 'ilike' biar pencariannya kebal huruf besar/kecil (Trayek A = trayek a)
         jadwal_response = (
             supabase.table("schedules")
             .select("*")
@@ -1581,7 +1682,7 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# inislaporan
+# inspeksi laporan harian driver
 @router.post("/mulai")
 def mulai_laporan(
     data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
@@ -1636,10 +1737,10 @@ async def upload_selfie(
 ):
     try:
         ekstensi = foto.filename.split(".")[-1].lower()
-        if ekstensi not in ["jpg", "jpeg", "png"]:
+        if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, atau PNG.",
+                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, PNG, atau WEBP.",
             )
 
         nama_prefix = email_supir.split("@")[0]
@@ -1672,3 +1773,5 @@ async def upload_selfie(
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
+
+---
