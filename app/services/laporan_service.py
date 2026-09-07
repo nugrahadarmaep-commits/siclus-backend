@@ -40,7 +40,9 @@ def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
             )
             .execute()
         )
-        return response.data[0]
+        if response.data:
+            return response.data[0]
+        raise HTTPException(status_code=500, detail="Gagal membuat record laporan harian baru.")
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -92,11 +94,13 @@ def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
     waktu_sekarang = datetime.now(WIB)
     jam_teks = waktu_sekarang.strftime("%H:%M")
 
-    # Radar Cek Keterlambatan Keluar Garasi (CP1)
+    # cek radar keterlambatan cp1
     status_waktu = "TEPAT WAKTU"
     laporan = (
         supabase.table("daily_reports").select("trayek").eq("id", laporan_id).execute()
     )
+    if not laporan.data or not laporan.data[0].get("trayek"):
+        raise HTTPException(status_code=404, detail="Data trayek tidak di temukan.")
     trayek = laporan.data[0]["trayek"]
 
     jadwal = (
@@ -152,15 +156,17 @@ def proses_cp2(sesi_id: str, data: SesiCP2Update, email_supir: str):
     laporan_id = sesi.data[0]["laporan_id"]
     status_waktu_bawaan = sesi.data[0].get(
         "status_waktu", "TEPAT WAKTU"
-    )  # ambil dari cp1
+    )
 
     waktu_sekarang = datetime.now(WIB)
     jam_teks = waktu_sekarang.strftime("%H:%M")
 
-    # otomatisasi cek keterlambatan halte cp2
+    # cek keterlambatan halte cp2
     laporan = (
         supabase.table("daily_reports").select("trayek").eq("id", laporan_id).execute()
     )
+    if not laporan.data or not laporan.data[0].get("trayek"):
+        raise HTTPException(status_code=404, detail="Data trayek untuk laporan tidak di temukan.")
     trayek = laporan.data[0]["trayek"]
     jadwal = (
         supabase.table("schedules")

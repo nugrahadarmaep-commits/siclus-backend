@@ -102,18 +102,25 @@ def sesi_checkpoint_4(
     return proses_cp4(sesi_id, data, email_supir)
 
 
-# uploadselfie
+# upload selfie
 @router.post("/upload-selfie")
 async def upload_selfie(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
 ):
     try:
-        ekstensi = foto.filename.split(".")[-1].lower()
+        ekstensi = foto.filename.split(".")[-1].lower() if "." in foto.filename else ""
         if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Format file tidak didukung. Harap gunakan JPG, JPEG, PNG, atau WEBP.",
-            )
+            if foto.content_type in ["image/jpeg", "image/jpg"]:
+                ekstensi = "jpg"
+            elif foto.content_type == "image/png":
+                ekstensi = "png"
+            elif foto.content_type == "image/webp":
+                ekstensi    = "webp"
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Format file tidak didukung. Harap gunakan JPG, JPEG, PNG, atau WEBP.",
+                )
 
         nama_prefix = email_supir.split("@")[0]
         nama_file_baru = f"{nama_prefix}_{int(time.time())}.{ekstensi}"

@@ -15,13 +15,11 @@ class UserResponse(BaseModel):
     nama_lengkap: str
     email: EmailStr
     role: str
-
     trayek: Optional[str] = None
     bus: Optional[str] = None
 
     class Config:
         from_attributes = True
-
 
 # register tambah driver baru
 class UserRegister(BaseModel):
@@ -37,7 +35,8 @@ class UserRegister(BaseModel):
 class UserUpdate(BaseModel):
     nama_lengkap: Optional[str] = None
     email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
     trayek: Optional[str] = None
     bus: Optional[str] = None
-    password: Optional[str] = None
     

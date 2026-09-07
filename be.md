@@ -272,7 +272,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["Autentikasi"])
 app.include_router(laporan_router, prefix="/api/laporan", tags=["Laporan Harian"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Dashboard Admin"])
-app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
+app.include_router(driver_router, prefix="/api/driver", tags=["Zona Driver"])
 
 
 # test
@@ -440,13 +440,11 @@ class UserResponse(BaseModel):
     nama_lengkap: str
     email: EmailStr
     role: str
-
     trayek: Optional[str] = None
     bus: Optional[str] = None
 
     class Config:
         from_attributes = True
-
 
 # register tambah driver baru
 class UserRegister(BaseModel):
@@ -462,9 +460,10 @@ class UserRegister(BaseModel):
 class UserUpdate(BaseModel):
     nama_lengkap: Optional[str] = None
     email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
     trayek: Optional[str] = None
     bus: Optional[str] = None
-    password: Optional[str] = None
 ```
 
 [Kembali ke Daftar Isi](#-daftar-isi)
@@ -980,7 +979,6 @@ from app.services.auth_service import proses_login_supir
 
 router = APIRouter()
 
-
 @router.post("/login")
 def login(data: UserLogin):
     hasil_login = proses_login_supir(data)
@@ -1043,7 +1041,10 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
         tanggal_hari_ini = str(date.today())
 
         users_res = (
-            supabase.table("users").select("id").eq("role", "driver").execute()
+            supabase.table("users")
+            .select("id")
+            .in_("role", ["pengemudi", "driver", "DRIVER", "Driver"])
+            .execute()
         )
         total_supir = len(users_res.data)
 

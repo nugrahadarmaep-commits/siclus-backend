@@ -24,7 +24,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["Autentikasi"])
 app.include_router(laporan_router, prefix="/api/laporan", tags=["Laporan Harian"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Dashboard Admin"])
-app.include_router(driver_router, prefix="/api/driver", tags=["Zona Pengemudi"])
+app.include_router(driver_router, prefix="/api/driver", tags=["Zona Driver"])
 
 
 # test

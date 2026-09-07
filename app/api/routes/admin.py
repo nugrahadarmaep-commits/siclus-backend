@@ -47,7 +47,10 @@ def dashboard_admin(email_admin: str = Depends(verifikasi_admin)):
         tanggal_hari_ini = str(date.today())
 
         users_res = (
-            supabase.table("users").select("id").eq("role", "driver").execute()
+            supabase.table("users")
+            .select("id")
+            .in_("role", ["pengemudi", "driver", "DRIVER", "Driver"])
+            .execute()
         )
         total_supir = len(users_res.data)
 
