@@ -39,4 +39,8 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     trayek: Optional[str] = None
     bus: Optional[str] = None
-    
+
+
+# update profil pribadi admin (nama)
+class AdminProfileUpdate(BaseModel):
+    nama_lengkap: str

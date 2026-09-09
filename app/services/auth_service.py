@@ -1,3 +1,7 @@
+# ==============================================================================
+# SERVICE: AUTENTIKASI PENGGUNA (LOGIN & TOKEN)
+# ==============================================================================
+
 from fastapi import HTTPException, status
 from app.schemas.user import UserLogin
 from app.core.security import create_access_token, verify_password
@@ -5,6 +9,7 @@ from app.db.database import supabase
 
 
 def proses_login_supir(data_login: UserLogin):
+
     # 1. Ambil identitas login (bisa dikirim via field 'id' atau 'email')
     login_id = (data_login.id or data_login.email or "").strip()
     if not login_id:

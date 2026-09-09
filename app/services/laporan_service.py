@@ -1,3 +1,7 @@
+# ==============================================================================
+# SERVICE: LAPORAN & INSPEKSI OPERASIONAL PENGEMUDI
+# ==============================================================================
+
 from fastapi import HTTPException, status
 from datetime import datetime, timezone, timedelta
 from app.db.database import supabase
@@ -5,7 +9,6 @@ from app.schemas.laporan import LaporanHarianCreate
 from app.schemas.inspeksi import InspeksiCreate
 from app.schemas.perjalanan import (
     SesiCP1Create,
-    SesiCP2Update,
     SesiCP3Update,
     SesiCP4Update,
 )
@@ -14,7 +17,9 @@ from app.schemas.perjalanan import (
 WIB = timezone(timedelta(hours=7))
 
 
-# ini laporan
+# ==============================================================================
+# INISIALISASI LAPORAN HARIAN
+# ==============================================================================
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
         cek_laporan = (
@@ -50,7 +55,9 @@ def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
         )
 
 
-# inspeksi
+# ==============================================================================
+# INSPEKSI KONDISI FISIK ARMADA BUS
+# ==============================================================================
 def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
     cek = supabase.table("daily_reports").select("id").eq("id", laporan_id).execute()
     if not cek.data:
@@ -85,7 +92,9 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
         )
 
 
-# sesicp1
+# ==============================================================================
+# PROSES CHECKPOINT 1: KELUAR GARASI DISHUB
+# ==============================================================================
 def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
     cek = supabase.table("daily_reports").select("id").eq("id", laporan_id).execute()
     if not cek.data:
@@ -94,13 +103,13 @@ def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
     waktu_sekarang = datetime.now(WIB)
     jam_teks = waktu_sekarang.strftime("%H:%M")
 
-    # cek radar keterlambatan cp1
+    # Cek radar keterlambatan CP1
     status_waktu = "TEPAT WAKTU"
     laporan = (
         supabase.table("daily_reports").select("trayek").eq("id", laporan_id).execute()
     )
     if not laporan.data or not laporan.data[0].get("trayek"):
-        raise HTTPException(status_code=404, detail="Data trayek tidak di temukan.")
+        raise HTTPException(status_code=404, detail="Data trayek tidak ditemukan.")
     trayek = laporan.data[0]["trayek"]
 
     jadwal = (
@@ -137,81 +146,21 @@ def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
         raise HTTPException(status_code=500, detail=f"Gagal CP1: {str(e)}")
 
 
-# sesicp2
-def proses_cp2(sesi_id: str, data: SesiCP2Update, email_supir: str):
-    # validasi cp1
+# ==============================================================================
+# PROSES CHECKPOINT 3: SELESAI TITIK AKHIR RUTE
+# ==============================================================================
+def proses_cp3(sesi_id: str, data: SesiCP3Update, email_supir: str):
+    # Validasi CP1 (Karena CP2 sudah ditiadakan)
     sesi = (
         supabase.table("trip_sessions")
-        .select("laporan_id, tipe_sesi, jam_berangkat_kantor, status_waktu")
+        .select("jam_berangkat_kantor")
         .eq("id", sesi_id)
         .execute()
     )
-
     if not sesi.data or not sesi.data[0].get("jam_berangkat_kantor"):
         raise HTTPException(
-            status_code=403, detail="Gagal: Selesaikan Check Point 1 terlebih dahulu!"
-        )
-
-    tipe_sesi = sesi.data[0]["tipe_sesi"]
-    laporan_id = sesi.data[0]["laporan_id"]
-    status_waktu_bawaan = sesi.data[0].get(
-        "status_waktu", "TEPAT WAKTU"
-    )
-
-    waktu_sekarang = datetime.now(WIB)
-    jam_teks = waktu_sekarang.strftime("%H:%M")
-
-    # cek keterlambatan halte cp2
-    laporan = (
-        supabase.table("daily_reports").select("trayek").eq("id", laporan_id).execute()
-    )
-    if not laporan.data or not laporan.data[0].get("trayek"):
-        raise HTTPException(status_code=404, detail="Data trayek untuk laporan tidak di temukan.")
-    trayek = laporan.data[0]["trayek"]
-    jadwal = (
-        supabase.table("schedules")
-        .select("batas_tiba_start")
-        .ilike("trayek", trayek)
-        .eq("tipe_sesi", tipe_sesi)
-        .execute()
-    )
-
-    if jadwal.data and jadwal.data[0].get("batas_tiba_start"):
-        batas_maksimal = str(jadwal.data[0]["batas_tiba_start"]).strip()[:5]
-        if jam_teks > batas_maksimal:
-            status_waktu_bawaan = "TERLAMBAT"
-
-    try:
-        response = (
-            supabase.table("trip_sessions")
-            .update(
-                {
-                    "km_berangkat_start": data.km_berangkat_start,
-                    "jam_berangkat_start": waktu_sekarang.isoformat(),
-                    "status_waktu": status_waktu_bawaan,
-                }
-            )
-            .eq("id", sesi_id)
-            .execute()
-        )
-        return {"pesan": "Check Point 2 Selesai", "data": response.data[0]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gagal CP2: {str(e)}")
-
-
-# sesicp3
-def proses_cp3(sesi_id: str, data: SesiCP3Update, email_supir: str):
-    # validasi cp2
-    sesi = (
-        supabase.table("trip_sessions")
-        .select("jam_berangkat_start")
-        .eq("id", sesi_id)
-        .execute()
-    )
-    if not sesi.data or not sesi.data[0].get("jam_berangkat_start"):
-        raise HTTPException(
             status_code=403,
-            detail="Gagal: Selesaikan Check Point 2 (Tiba di Halte) terlebih dahulu!",
+            detail="Gagal: Selesaikan Check Point 1 (Keluar Garasi) terlebih dahulu!",
         )
 
     waktu_sekarang = datetime.now(WIB).isoformat()
@@ -233,7 +182,9 @@ def proses_cp3(sesi_id: str, data: SesiCP3Update, email_supir: str):
         raise HTTPException(status_code=500, detail=f"Gagal CP3: {str(e)}")
 
 
-# sesicp4
+# ==============================================================================
+# PROSES CHECKPOINT 4: KEMBALI KE GARASI DISHUB
+# ==============================================================================
 def proses_cp4(sesi_id: str, data: SesiCP4Update, email_supir: str):
     # Validasi CP3
     sesi = (
@@ -265,3 +216,4 @@ def proses_cp4(sesi_id: str, data: SesiCP4Update, email_supir: str):
         return {"pesan": "Shift Laporan Selesai & Ditutup!", "data": response.data[0]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal CP4: {str(e)}")
+

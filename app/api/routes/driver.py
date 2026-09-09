@@ -1,24 +1,27 @@
+# ==============================================================================
+# ROUTE: PENGEMUDI (DRIVER)
+# ==============================================================================
+
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
+import time
+
 from app.core.config import settings
 from app.db.database import supabase
-from fastapi import UploadFile, File
-import time
+from datetime import date
 
 router = APIRouter()
 security = HTTPBearer()
 
 
-# verifikasi token(jwt) driver 
+# ==============================================================================
+# VERIFIKASI KEAMANAN PENGEMUDI (TOKEN JWT)
+# ==============================================================================
 def verifikasi_pengemudi(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
-    """
-    Fungsi otorisasi untuk memvalidasi token JWT pada Zona Pengemudi.
-    Mengekstrak email pengguna dari payload token.
-    """
     token = credentials.credentials
     try:
         payload = jwt.decode(
@@ -46,13 +49,15 @@ def verifikasi_pengemudi(
         )
 
 
-# data profil driver
-@router.get("/profil")
+# ==============================================================================
+# PROFIL PENGEMUDI
+# ==============================================================================
+@router.get(
+    "/profil",
+    tags=["Pengemudi - Akun & Jadwal"],
+    summary="Data Profil Pengemudi Aktif",
+)
 def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
-    """
-    Menarik data identitas dan penugasan pengemudi (Nama, Trayek, Armada)
-    dari database berdasarkan email yang terekstrak dari Token JWT aktif.
-    """
     try:
         response = (
             supabase.table("users")
@@ -80,15 +85,17 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ubah foto profil driver
-@router.put("/profil/foto")
+# ==============================================================================
+# UNGGAH FOTO PROFIL PENGEMUDI
+# ==============================================================================
+@router.put(
+    "/profil/foto",
+    tags=["Pengemudi - Akun & Jadwal"],
+    summary="Unggah Foto Profil Pengemudi",
+)
 async def update_foto_profil(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_pengemudi)
 ):
-    """
-    Mengunggah foto profil baru ke penyimpanan awan dan memperbarui
-    tautan (URL) foto tersebut di tabel profil pengguna.
-    """
     try:
 
         ekstensi = foto.filename.split(".")[-1].lower()
@@ -127,13 +134,15 @@ async def update_foto_profil(
         )
 
 
-# riwayat perjalanan driver
-@router.get("/riwayat")
+# ==============================================================================
+# HISTORI RIWAYAT PERJALANAN PENGEMUDI
+# ==============================================================================
+@router.get(
+    "/riwayat",
+    tags=["Pengemudi - Akun & Jadwal"],
+    summary="Histori Riwayat Operasional Pengemudi",
+)
 def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
-    """
-    Menarik histori laporan operasional khusus untuk pengemudi yang sedang aktif.
-    Dilengkapi sistem filter ketat untuk mencegah kebocoran data antar pengemudi.
-    """
     try:
         response = (
             supabase.table("daily_reports")
@@ -158,16 +167,26 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# jadwal operasional driver
-@router.get("/jadwal")
+# ==============================================================================
+# JADWAL PENUGASAN OPERASIONAL PENGEMUDI
+# ==============================================================================
+@router.get(
+    "/jadwal",
+    tags=["Pengemudi - Akun & Jadwal"],
+    summary="Jadwal Penugasan Operasional Pengemudi",
+)
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
+
     """
-    Menarik jadwal operasional dan batas waktu toleransi (cut-off time)
+    Menampilkan batas waktu toleransi keberangkatan dan kedatangan
     berdasarkan rute/trayek yang ditugaskan kepada pengemudi saat ini.
     """
     try:
         user_response = (
-            supabase.table("users").select("trayek").eq("email", email_supir).execute()
+            supabase.table("users")
+            .select("trayek, bus")
+            .eq("email", email_supir)
+            .execute()
         )
 
         if not user_response.data:
@@ -176,11 +195,14 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
                 detail="Data akun pengemudi tidak ditemukan.",
             )
 
-        trayek_supir = user_response.data[0].get("trayek")
+        user_data = user_response.data[0]
+        trayek_supir = user_data.get("trayek")
 
         if not trayek_supir:
             return {
                 "pesan": "Anda belum ditugaskan ke rute/trayek mana pun hari ini.",
+                "trayek": None,
+                "bus": user_data.get("bus"),
                 "data": [],
             }
 
@@ -193,6 +215,8 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
 
         return {
             "pesan": f"Jadwal operasional untuk rute {trayek_supir} berhasil ditarik.",
+            "trayek": trayek_supir,
+            "bus": user_data.get("bus"),
             "data": jadwal_response.data,
         }
 
@@ -203,3 +227,58 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan teknis saat menarik jadwal operasional: {str(e)}",
         )
+
+
+# ==============================================================================
+# PENUGASAN KENDARAAN (SUGESTI DRIVER)
+# ==============================================================================
+@router.get(
+    "/penugasan/hari-ini",
+    tags=["Pengemudi - Akun & Jadwal"],
+    summary="Data Penugasan Kendaraan Hari Ini (Sugesti)",
+)
+def get_penugasan_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
+    """
+    Menarik data Nopol, Jenis Kendaraan, Kapasitas, dan Trayek 
+    yang ditugaskan oleh admin khusus untuk hari ini.
+    """
+    try:
+        # Cari ID supir dari email
+        user_response = (
+            supabase.table("users")
+            .select("id")
+            .eq("email", email_supir)
+            .execute()
+        )
+        if not user_response.data:
+            raise HTTPException(status_code=404, detail="Akun pengemudi tidak ditemukan.")
+            
+        id_supir = user_response.data[0]["id"]
+        tanggal_hari_ini = str(date.today())
+        
+        penugasan_response = (
+            supabase.table("penugasan")
+            .select("*")
+            .eq("id_supir", id_supir)
+            .eq("tanggal", tanggal_hari_ini)
+            .execute()
+        )
+        
+        if not penugasan_response.data:
+            return {
+                "pesan": "Belum ada penugasan kendaraan untuk Anda hari ini.",
+                "data": None
+            }
+            
+        return {
+            "pesan": "Data penugasan kendaraan hari ini berhasil ditarik.",
+            "data": penugasan_response.data[0]
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal menarik data penugasan: {str(e)}",
+        )
+

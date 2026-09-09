@@ -1,3 +1,7 @@
+# ==============================================================================
+# ROUTE: LAPORAN OPERASIONAL PENGEMUDI (DRIVER)
+# ==============================================================================
+
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
@@ -7,7 +11,6 @@ from app.schemas.laporan import LaporanHarianCreate
 from app.schemas.inspeksi import InspeksiCreate
 from app.schemas.perjalanan import (
     SesiCP1Create,
-    SesiCP2Update,
     SesiCP3Update,
     SesiCP4Update,
 )
@@ -15,7 +18,6 @@ from app.services.laporan_service import (
     create_laporan_harian,
     create_inspeksi_kendaraan,
     proses_cp1,
-    proses_cp2,
     proses_cp3,
     proses_cp4,
 )
@@ -26,7 +28,9 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# verifikasitoken
+# ==============================================================================
+# VERIFIKASI KEAMANAN PENGEMUDI (TOKEN JWT)
+# ==============================================================================
 def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
@@ -54,59 +58,92 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
         )
 
 
-# inspeksi laporan harian driver
-@router.post("/mulai")
+# ==============================================================================
+# INISIALISASI LAPORAN HARIAN
+# ==============================================================================
+@router.post(
+    "/mulai",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Mulai Sesi Laporan Harian Pengemudi",
+)
 def mulai_laporan(
     data: LaporanHarianCreate, email_supir: str = Depends(verifikasi_token)
 ):
     return create_laporan_harian(data, email_supir)
 
 
-# inspeksi
-@router.post("/inspeksi")
+# ==============================================================================
+# INSPEKSI KELAYAKAN ARMADA BUS
+# ==============================================================================
+@router.post(
+    "/inspeksi",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Kirim Hasil Inspeksi Armada Bus",
+)
 def inspeksi_kendaraan(
     laporan_id: str, data: InspeksiCreate, email_supir: str = Depends(verifikasi_token)
 ):
     return create_inspeksi_kendaraan(laporan_id, data)
 
 
-# sesicp1
-@router.post("/sesi/cp1")
+# ==============================================================================
+# CHECKPOINT 1: KELUAR GARASI DISHUB
+# ==============================================================================
+@router.post(
+    "/sesi/cp1",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Simpan Checkpoint 1 (Keluar Garasi Dishub)",
+)
 def sesi_checkpoint_1(
     laporan_id: str, data: SesiCP1Create, email_supir: str = Depends(verifikasi_token)
 ):
     return proses_cp1(laporan_id, data, email_supir)
 
 
-# sesicp2
-@router.put("/sesi/cp2/{sesi_id}")
-def sesi_checkpoint_2(
-    sesi_id: str, data: SesiCP2Update, email_supir: str = Depends(verifikasi_token)
-):
-    return proses_cp2(sesi_id, data, email_supir)
 
 
-# sesicp3
-@router.put("/sesi/cp3/{sesi_id}")
+
+# ==============================================================================
+# CHECKPOINT 3: SELESAI TITIK AKHIR RUTE
+# ==============================================================================
+@router.put(
+    "/sesi/cp3/{sesi_id}",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Simpan Checkpoint 3 (Selesai Titik Finish Rute)",
+)
 def sesi_checkpoint_3(
     sesi_id: str, data: SesiCP3Update, email_supir: str = Depends(verifikasi_token)
 ):
     return proses_cp3(sesi_id, data, email_supir)
 
 
-# sesicp4
-@router.put("/sesi/cp4/{sesi_id}")
+# ==============================================================================
+# CHECKPOINT 4: KEMBALI KE GARASI DISHUB
+# ==============================================================================
+@router.put(
+    "/sesi/cp4/{sesi_id}",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Simpan Checkpoint 4 (Kembali Masuk Garasi Dishub)",
+)
 def sesi_checkpoint_4(
     sesi_id: str, data: SesiCP4Update, email_supir: str = Depends(verifikasi_token)
 ):
     return proses_cp4(sesi_id, data, email_supir)
 
 
-# upload selfie
-@router.post("/upload-selfie")
+# ==============================================================================
+# VALIDASI SWAFOTO (SELFIE) KEHADIRAN
+# ==============================================================================
+@router.post(
+    "/upload-selfie",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Unggah Swafoto (Selfie) Kehadiran Pengemudi",
+)
 async def upload_selfie(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
 ):
+
+
     try:
         ekstensi = foto.filename.split(".")[-1].lower() if "." in foto.filename else ""
         if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
