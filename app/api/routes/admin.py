@@ -12,6 +12,7 @@ from app.schemas.user import UserRegister, UserUpdate, AdminProfileUpdate
 from app.schemas.jadwal import JadwalCreate, JadwalUpdate
 from app.schemas.penugasan import PenugasanCreate, PenugasanUpdate
 from app.services import admin_service
+
 router = APIRouter()
 security = HTTPBearer()
 
@@ -19,7 +20,9 @@ security = HTTPBearer()
 # ==============================================================================
 # VERIFIKASI KEAMANAN ADMIN
 # ==============================================================================
-def verifikasi_admin(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+def verifikasi_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
     token = credentials.credentials
     try:
         payload = jwt.decode(
@@ -187,6 +190,7 @@ async def update_foto_profil_admin(
 ):
     return await admin_service.update_admin_avatar(email_admin, foto)
 
+
 # ==============================================================================
 # MANAJEMEN PENUGASAN KENDARAAN (HARIAN)
 # ==============================================================================
@@ -208,3 +212,27 @@ def create_penugasan_harian(
     data: PenugasanCreate, email_admin: str = Depends(verifikasi_admin)
 ):
     return admin_service.create_penugasan_harian(data)
+
+
+@router.put(
+    "/penugasan/{id_penugasan}",
+    tags=["Admin - Penugasan"],
+    summary="Update Penugasan Kendaraan Harian untuk Supir",
+)
+def update_penugasan_harian(
+    id_penugasan: str,
+    data: PenugasanUpdate,
+    email_admin: str = Depends(verifikasi_admin),
+):
+    return admin_service.update_penugasan_harian(id_penugasan, data)
+
+
+@router.delete(
+    "/penugasan/{id_penugasan}",
+    tags=["Admin - Penugasan"],
+    summary="Hapus Penugasan Kendaraan Harian",
+)
+def delete_penugasan_harian(
+    id_penugasan: str, email_admin: str = Depends(verifikasi_admin)
+):
+    return admin_service.delete_penugasan_harian(id_penugasan)

@@ -41,7 +41,6 @@ tags_metadata = [
 app = FastAPI(
     title="SICLUS API - Sistem Informasi Catatan & Laporan Pengemudi Bus",
     description="Backend API resmi untuk manajemen operasional, inspeksi kendaraan, dan rekapitulasi kehadiran pengemudi.",
-    version="1.0.0",
     openapi_tags=tags_metadata,
 )
 
@@ -64,5 +63,5 @@ app.include_router(driver_router, prefix="/api/driver")
 @app.get("/", tags=["Pemeriksaan Sistem"])
 def status_sistem():
     """Memeriksa status operasional mesin backend."""
-    return {"status": "Mesin SICLUS berjalan normal", "versi": "1.0.0"}
+    return {"status": "mesin berjalan!"}
 

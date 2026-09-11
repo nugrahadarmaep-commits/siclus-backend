@@ -176,17 +176,13 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     summary="Jadwal Penugasan Operasional Pengemudi",
 )
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
-
     """
     Menampilkan batas waktu toleransi keberangkatan dan kedatangan
     berdasarkan rute/trayek yang ditugaskan kepada pengemudi saat ini.
     """
     try:
         user_response = (
-            supabase.table("users")
-            .select("trayek, bus")
-            .eq("email", email_supir)
-            .execute()
+            supabase.table("users").select("id").eq("email", email_supir).execute()
         )
 
         if not user_response.data:
@@ -196,16 +192,35 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             )
 
         user_data = user_response.data[0]
-        trayek_supir = user_data.get("trayek")
+        id_supir = user_data.get("id")
+
+        trayek_supir = None
+        bus_supir = None
+
+        # 1. Wajib dari penugasan hari ini
+        try:
+            import datetime
+
+            hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
+
+            penugasan_res = (
+                supabase.table("penugasan")
+                .select("trayek, nopol_kendaraan")
+                .eq("id_supir", id_supir)
+                .eq("tanggal", hari_ini)
+                .limit(1)
+                .execute()
+            )
+            if penugasan_res.data:
+                trayek_supir = penugasan_res.data[0].get("trayek")
+                bus_supir = penugasan_res.data[0].get("nopol_kendaraan")
+        except Exception as e_penugasan:
+            print("Warning cek penugasan jadwal:", e_penugasan)
 
         if not trayek_supir:
-            return {
-                "pesan": "Anda belum ditugaskan ke rute/trayek mana pun hari ini.",
-                "trayek": None,
-                "bus": user_data.get("bus"),
-                "data": [],
-            }
+            return []  # Tidak ada penugasan hari ini, tidak ada jadwal operasional
 
+        # 2. Ambil konfigurasi cut-off dari tabel schedules
         jadwal_response = (
             supabase.table("schedules")
             .select("*")
@@ -213,11 +228,46 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             .execute()
         )
 
+        jadwal_list = jadwal_response.data or []
+
+        has_pagi = any(
+            (j.get("tipe_sesi") or "").upper() == "PAGI" for j in jadwal_list
+        )
+        has_siang = any(
+            (j.get("tipe_sesi") or "").upper() == "SIANG" for j in jadwal_list
+        )
+
+        # 3. Format response jadwal per sesi tanpa manipulasi waktu
+        enriched_list = []
+        for j in jadwal_list:
+            sesi = (j.get("tipe_sesi") or "PAGI").upper()
+            raw_keluar = str(j.get("batas_keluar_dishub") or "").strip()
+            kembali = str(j.get("batas_tiba_start") or "").strip()[:5]
+
+            if "|" in raw_keluar:
+                parts = raw_keluar.split("|", 1)
+                buka_formulir = parts[0].strip()[:5]
+                keluar = parts[1].strip()[:5]
+            else:
+                buka_formulir = raw_keluar[:5]
+                keluar = raw_keluar[:5]
+
+            enriched_list.append(
+                {
+                    **j,
+                    "tipe_sesi": sesi,
+                    "jam_formulir_pengisian": buka_formulir,
+                    "batas_keluar_dishub": keluar,
+                    "batas_kembali_dishub": kembali,
+                    "batas_tiba_start": kembali,
+                }
+            )
+
         return {
             "pesan": f"Jadwal operasional untuk rute {trayek_supir} berhasil ditarik.",
             "trayek": trayek_supir,
-            "bus": user_data.get("bus"),
-            "data": jadwal_response.data,
+            "bus": bus_supir,
+            "data": enriched_list,
         }
 
     except HTTPException as e:
@@ -239,40 +289,42 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
 )
 def get_penugasan_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     """
-    Menarik data Nopol, Jenis Kendaraan, Kapasitas, dan Trayek 
+    Menarik data Nopol, Jenis Kendaraan, Kapasitas, dan Trayek
     yang ditugaskan oleh admin khusus untuk hari ini.
     """
     try:
         # Cari ID supir dari email
         user_response = (
-            supabase.table("users")
-            .select("id")
-            .eq("email", email_supir)
-            .execute()
+            supabase.table("users").select("id").eq("email", email_supir).execute()
         )
         if not user_response.data:
-            raise HTTPException(status_code=404, detail="Akun pengemudi tidak ditemukan.")
-            
+            raise HTTPException(
+                status_code=404, detail="Akun pengemudi tidak ditemukan."
+            )
+
         id_supir = user_response.data[0]["id"]
-        tanggal_hari_ini = str(date.today())
-        
+        import datetime
+
+        hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
+
         penugasan_response = (
             supabase.table("penugasan")
             .select("*")
             .eq("id_supir", id_supir)
-            .eq("tanggal", tanggal_hari_ini)
+            .eq("tanggal", hari_ini)
+            .limit(1)
             .execute()
         )
-        
+
         if not penugasan_response.data:
             return {
                 "pesan": "Belum ada penugasan kendaraan untuk Anda hari ini.",
-                "data": None
+                "data": None,
             }
-            
+
         return {
             "pesan": "Data penugasan kendaraan hari ini berhasil ditarik.",
-            "data": penugasan_response.data[0]
+            "data": penugasan_response.data[0],
         }
     except HTTPException as e:
         raise e
@@ -281,4 +333,3 @@ def get_penugasan_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Gagal menarik data penugasan: {str(e)}",
         )
-

@@ -59,6 +59,36 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 
 # ==============================================================================
+# AMBIL LAPORAN HARIAN HARI INI
+# ==============================================================================
+@router.get(
+    "/hari-ini",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Ambil Laporan Operasional Pengemudi Hari Ini",
+)
+def get_laporan_hari_ini(email_supir: str = Depends(verifikasi_token)):
+    try:
+        import datetime
+        hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
+        response = (
+            supabase.table("daily_reports")
+            .select("*, trip_sessions(*), inspections(*)")
+            .eq("id_supir", email_supir)
+            .eq("tanggal", hari_ini)
+            .limit(1)
+            .execute()
+        )
+        if response.data and len(response.data) > 0:
+            return {"status": "sukses", "data": response.data[0]}
+        return {"status": "sukses", "data": None}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Gagal mengambil laporan hari ini: {str(e)}",
+        )
+
+
+# ==============================================================================
 # INISIALISASI LAPORAN HARIAN
 # ==============================================================================
 @router.post(

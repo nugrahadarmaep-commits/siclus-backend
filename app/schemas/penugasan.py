@@ -10,6 +10,8 @@ class PenugasanCreate(BaseModel):
     jenis_kendaraan: str
     kapasitas_penumpang: int
     trayek: str
+    jadwal_pagi: Optional[dict] = None
+    jadwal_siang: Optional[dict] = None
 
 
 class PenugasanUpdate(BaseModel):
@@ -19,3 +21,5 @@ class PenugasanUpdate(BaseModel):
     jenis_kendaraan: Optional[str] = None
     kapasitas_penumpang: Optional[int] = None
     trayek: Optional[str] = None
+    jadwal_pagi: Optional[dict] = None
+    jadwal_siang: Optional[dict] = None

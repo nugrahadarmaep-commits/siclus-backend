@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class JadwalCreate(BaseModel):
     trayek: str
     tipe_sesi: str
+    jam_formulir_pengisian: Optional[str] = None
     batas_keluar_dishub: str
     batas_tiba_start: str
 
@@ -14,5 +15,6 @@ class JadwalCreate(BaseModel):
 class JadwalUpdate(BaseModel):
     trayek: Optional[str] = None
     tipe_sesi: Optional[str] = None
+    jam_formulir_pengisian: Optional[str] = None
     batas_keluar_dishub: Optional[str] = None
     batas_tiba_start: Optional[str] = None

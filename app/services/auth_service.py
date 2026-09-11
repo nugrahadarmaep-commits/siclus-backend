@@ -25,18 +25,20 @@ def proses_login_supir(data_login: UserLogin):
                 supabase.table("users").select("*").eq("email", login_id).execute()
             )
         else:
-            response = (
-                supabase.table("users").select("*").eq("id", login_id).execute()
-            )
+            response = supabase.table("users").select("*").eq("id", login_id).execute()
 
         db_user_list = response.data
 
         # Fallback pencarian silang jika percobaan pertama belum menemukan akun
         if not db_user_list:
             if "@" in login_id:
-                alt_response = supabase.table("users").select("*").eq("id", login_id).execute()
+                alt_response = (
+                    supabase.table("users").select("*").eq("id", login_id).execute()
+                )
             else:
-                alt_response = supabase.table("users").select("*").eq("email", login_id).execute()
+                alt_response = (
+                    supabase.table("users").select("*").eq("email", login_id).execute()
+                )
             db_user_list = alt_response.data
 
     except Exception as e:

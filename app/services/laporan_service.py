@@ -76,9 +76,10 @@ def create_inspeksi_kendaraan(laporan_id: str, data: InspeksiCreate):
                     "klakson": data.klakson,
                     "wiper": data.wiper,
                     "lampu_rem": data.lampu_rem,
-                    "bell": data.bell,
+                    "ban": data.ban,
                     "pintu": data.pintu,
                     "kebersihan": data.kebersihan,
+                    "mesin": data.mesin,
                     "catatan": data.catatan or "",
                 }
             )
@@ -120,9 +121,25 @@ def proses_cp1(laporan_id: str, data: SesiCP1Create, email_supir: str):
         .execute()
     )
 
-    if jadwal.data and jadwal.data[0].get("batas_keluar_dishub"):
-        batas_maksimal = str(jadwal.data[0]["batas_keluar_dishub"]).strip()[:5]
-        if jam_teks > batas_maksimal:
+    if jadwal.data:
+        raw_keluar = str(jadwal.data[0].get("batas_keluar_dishub") or "").strip()
+        if "|" in raw_keluar:
+            buka_teks, batas_keluar = raw_keluar.split("|", 1)
+        else:
+            buka_teks = ""
+            batas_keluar = raw_keluar
+
+        # 1. Validasi Kecepatan (Belum buka) jika admin menentukan jam buka
+        buka_teks = buka_teks.strip()[:5]
+        if buka_teks and buka_teks != "00:00" and jam_teks < buka_teks:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Sesi {data.tipe_sesi.upper()} belum dibuka. Jadwal buka pukul {buka_teks} WIB.",
+            )
+
+        # 2. Validasi Keterlambatan
+        batas_keluar = batas_keluar.strip()[:5]
+        if batas_keluar and batas_keluar != "00:00" and jam_teks > batas_keluar:
             status_waktu = "TERLAMBAT"
 
     try:

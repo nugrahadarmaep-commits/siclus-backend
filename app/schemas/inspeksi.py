@@ -11,7 +11,7 @@ class InspeksiCreate(BaseModel):
     klakson: str
     wiper: str
     lampu_rem: str
-    bell: str
+    ban: str
     pintu: str
     kebersihan: str
     mesin: str
