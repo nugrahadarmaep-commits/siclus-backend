@@ -251,6 +251,11 @@ def create_driver(data: UserRegister):
             status_code=status.HTTP_400_BAD_REQUEST, detail="Data tidak boleh kosong."
         )
 
+    if len(data.password.strip()) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Password driver wajib minimal 8 karakter."
+        )
+
     # Validasi keunikan ID dan Email
     if supabase.table("users").select("id").eq("id", data.id).execute().data:
         raise HTTPException(
@@ -301,6 +306,10 @@ def update_driver(user_id: str, data: UserUpdate):
         if "password" in update_data:
             pw = str(update_data["password"]).strip()
             if pw:
+                if len(pw) < 8:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST, detail="Password baru driver wajib minimal 8 karakter."
+                    )
                 update_data["password"] = get_password_hash(pw)
             else:
                 update_data.pop("password")

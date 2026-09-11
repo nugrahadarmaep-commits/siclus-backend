@@ -18,6 +18,12 @@ def proses_login_supir(data_login: UserLogin):
             detail="Kredensial tidak valid. ID Driver atau Email wajib diisi.",
         )
 
+    if not data_login.password or len(data_login.password.strip()) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password wajib minimal 8 karakter.",
+        )
+
     # 2. Mencari data pengguna di database (prioritas: jika ada '@' cari email, selain itu cari ID)
     try:
         if "@" in login_id:
