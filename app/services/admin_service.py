@@ -4,7 +4,7 @@
 
 from io import BytesIO
 from typing import Optional
-from datetime import date
+from datetime import date, datetime, timezone
 import time
 import pandas as pd
 from fastapi import HTTPException, status, UploadFile
@@ -80,7 +80,7 @@ def _get_user_lookup_map():
     try:
         res = (
             supabase.table("users")
-            .select("id, nama, email, trayek, bus, role")
+            .select("id, nama, email, trayek, bus, role, foto_profil")
             .execute()
         )
         user_map = {}
@@ -108,10 +108,12 @@ def get_rekap_operasional():
         for lap in laporan_list:
             supir = user_map.get(lap.get("id_supir"), {})
             lap["users"] = {
+                "id": supir.get("id") or lap.get("id_supir"),
                 "nama": supir.get("nama") or lap.get("id_supir") or "-",
                 "trayek": supir.get("trayek") or lap.get("trayek"),
                 "bus": supir.get("bus") or lap.get("bus"),
                 "email": supir.get("email", "-"),
+                "foto_profil": supir.get("foto_profil") or None,
             }
 
         return {
@@ -142,6 +144,7 @@ def get_riwayat_harian_grouped():
             laporan["users"] = {
                 "nama": supir.get("nama") or laporan.get("id_supir") or "-",
                 "email": supir.get("email", "-"),
+                "foto_profil": supir.get("foto_profil") or None,
             }
             tgl = laporan.get("tanggal")
             if tgl not in grup_tanggal:
@@ -181,21 +184,58 @@ def export_rekap_to_excel(id_supir: Optional[str] = None):
         tabel_excel = []
         for baris in data_laporan:
             sesi_list = baris.get("trip_sessions", [])
-            sesi = sesi_list[0] if sesi_list else {}
+            sorted_sesi = sorted(
+                sesi_list,
+                key=lambda s: (
+                    0 if "PAGI" in (s.get("tipe_sesi") or "").upper() else 1,
+                    s.get("created_at") or "",
+                ),
+            )
+            sesi_pagi = next(
+                (
+                    s
+                    for s in sorted_sesi
+                    if "PAGI" in (s.get("tipe_sesi") or "").upper()
+                ),
+                sorted_sesi[0] if sorted_sesi else {},
+            )
+            sesi_siang = next(
+                (
+                    s
+                    for s in sorted_sesi
+                    if "SIANG" in (s.get("tipe_sesi") or "").upper()
+                    or "SORE" in (s.get("tipe_sesi") or "").upper()
+                ),
+                sorted_sesi[1] if len(sorted_sesi) > 1 else {},
+            )
+
             supir = user_map.get(baris.get("id_supir"), {})
             nama_driver = supir.get("nama") or baris.get("id_supir") or "-"
+            id_driver = supir.get("id") or baris.get("id_supir") or "-"
+
+            status_pagi = (
+                sesi_pagi.get("status_waktu")
+                or ("TERLAMBAT" if sesi_pagi.get("is_late") else "TEPAT WAKTU")
+                if sesi_pagi
+                else "-"
+            )
+            status_siang = (
+                sesi_siang.get("status_waktu")
+                or ("TERLAMBAT" if sesi_siang.get("is_late") else "TEPAT WAKTU")
+                if sesi_siang
+                else "-"
+            )
 
             tabel_excel.append(
                 {
                     "Tanggal Operasional": baris.get("tanggal"),
                     "Nama Driver": nama_driver,
-                    "ID Driver": baris.get("id_supir"),
+                    "ID Driver": id_driver,
                     "Trayek": baris.get("trayek"),
                     "Armada Bus": baris.get("bus"),
-                    "Tipe Sesi": sesi.get("tipe_sesi", "-"),
-                    "Jam Keluar Dishub": sesi.get("jam_berangkat_kantor", "-"),
-                    "Jam Tiba di Sekolah": sesi.get("jam_berangkat_start", "-"),
-                    "Status Kedisiplinan": sesi.get("status_waktu", "-"),
+                    "Total Sesi": len(sesi_list),
+                    "Status Sesi Pagi": status_pagi,
+                    "Status Sesi Siang": status_siang,
                 }
             )
 
@@ -253,7 +293,8 @@ def create_driver(data: UserRegister):
 
     if len(data.password.strip()) < 8:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Password driver wajib minimal 8 karakter."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password driver wajib minimal 8 karakter.",
         )
 
     # Validasi keunikan ID dan Email
@@ -308,7 +349,8 @@ def update_driver(user_id: str, data: UserUpdate):
             if pw:
                 if len(pw) < 8:
                     raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST, detail="Password baru driver wajib minimal 8 karakter."
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Password baru driver wajib minimal 8 karakter.",
                     )
                 update_data["password"] = get_password_hash(pw)
             else:
@@ -522,13 +564,11 @@ async def update_admin_avatar(email_admin: str, foto: UploadFile):
 # MANAJEMEN PENUGASAN KENDARAAN (HARIAN)
 # ==============================================================================
 def get_semua_penugasan():
-    """Mengambil daftar penugasan harian beserta jadwal operasionalnya (auto-expire penugasan hari sebelumnya)."""
+    """Mengambil daftar penugasan harian beserta jadwal operasional auto-expire."""
     try:
         user_map = _get_user_lookup_map()
-        import datetime
-        hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
+        hari_ini = datetime.now().strftime("%Y-%m-%d")
 
-        # Auto-clean data penugasan yang sudah lewat hari (agar tidak menumpuk)
         try:
             supabase.table("penugasan").delete().lt("tanggal", hari_ini).execute()
         except Exception as e_clean:
@@ -623,54 +663,35 @@ def create_penugasan_harian(data: PenugasanCreate):
         if not user.data:
             raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
 
-        # Cek apakah sudah ada penugasan di tanggal yang sama untuk supir ini
-        cek = (
+        # penugasan baru sesuai dengan kemauan admin
+        res = (
             supabase.table("penugasan")
-            .select("id")
-            .eq("id_supir", data.id_supir)
-            .eq("tanggal", str(data.tanggal))
+            .insert(
+                {
+                    "id_supir": data.id_supir,
+                    "tanggal": str(data.tanggal),
+                    "nopol_kendaraan": data.nopol_kendaraan,
+                    "jenis_kendaraan": data.jenis_kendaraan,
+                    "kapasitas_penumpang": data.kapasitas_penumpang,
+                    "trayek": data.trayek,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             .execute()
         )
-
-        if cek.data:
-            # Update jika sudah ada
-            res = (
-                supabase.table("penugasan")
-                .update(
-                    {
-                        "nopol_kendaraan": data.nopol_kendaraan,
-                        "jenis_kendaraan": data.jenis_kendaraan,
-                        "kapasitas_penumpang": data.kapasitas_penumpang,
-                        "trayek": data.trayek,
-                    }
-                )
-                .eq("id", cek.data[0]["id"])
-                .execute()
-            )
-            pesan = "Penugasan diperbarui."
-        else:
-            # Insert baru
-            res = (
-                supabase.table("penugasan")
-                .insert(
-                    {
-                        "id_supir": data.id_supir,
-                        "tanggal": str(data.tanggal),
-                        "nopol_kendaraan": data.nopol_kendaraan,
-                        "jenis_kendaraan": data.jenis_kendaraan,
-                        "kapasitas_penumpang": data.kapasitas_penumpang,
-                        "trayek": data.trayek,
-                    }
-                )
-                .execute()
-            )
-            pesan = "Penugasan dibuat."
+        pesan = "Penugasan dibuat."
 
         # Sinkronisasi Jadwal Operasional Sesi Pagi jika disertakan
         if data.jadwal_pagi and data.trayek:
-            form_pagi = str(data.jadwal_pagi.get("jam_formulir_pengisian") or "").strip()[:5]
-            keluar_pagi = str(data.jadwal_pagi.get("batas_keluar_dishub") or "").strip()[:5]
-            kembali_pagi = str(data.jadwal_pagi.get("batas_kembali_dishub") or "").strip()[:5]
+            form_pagi = str(
+                data.jadwal_pagi.get("jam_formulir_pengisian") or ""
+            ).strip()[:5]
+            keluar_pagi = str(
+                data.jadwal_pagi.get("batas_keluar_dishub") or ""
+            ).strip()[:5]
+            kembali_pagi = str(
+                data.jadwal_pagi.get("batas_kembali_dishub") or ""
+            ).strip()[:5]
             val_keluar_pagi = f"{form_pagi}|{keluar_pagi}" if form_pagi else keluar_pagi
 
             try:
@@ -702,10 +723,18 @@ def create_penugasan_harian(data: PenugasanCreate):
 
         # Sinkronisasi Jadwal Operasional Sesi Siang jika disertakan
         if data.jadwal_siang and data.trayek:
-            form_siang = str(data.jadwal_siang.get("jam_formulir_pengisian") or "").strip()[:5]
-            keluar_siang = str(data.jadwal_siang.get("batas_keluar_dishub") or "").strip()[:5]
-            kembali_siang = str(data.jadwal_siang.get("batas_kembali_dishub") or "").strip()[:5]
-            val_keluar_siang = f"{form_siang}|{keluar_siang}" if form_siang else keluar_siang
+            form_siang = str(
+                data.jadwal_siang.get("jam_formulir_pengisian") or ""
+            ).strip()[:5]
+            keluar_siang = str(
+                data.jadwal_siang.get("batas_keluar_dishub") or ""
+            ).strip()[:5]
+            kembali_siang = str(
+                data.jadwal_siang.get("batas_kembali_dishub") or ""
+            ).strip()[:5]
+            val_keluar_siang = (
+                f"{form_siang}|{keluar_siang}" if form_siang else keluar_siang
+            )
 
             try:
                 cek_siang = (
@@ -787,9 +816,15 @@ def update_penugasan_harian(id_penugasan: str, data: PenugasanUpdate):
         # Sinkronisasi Jadwal Operasional Sesi Pagi jika disertakan
         target_trayek = data.trayek or cek.data[0].get("trayek")
         if data.jadwal_pagi and target_trayek:
-            form_pagi = str(data.jadwal_pagi.get("jam_formulir_pengisian") or "").strip()[:5]
-            keluar_pagi = str(data.jadwal_pagi.get("batas_keluar_dishub") or "").strip()[:5]
-            kembali_pagi = str(data.jadwal_pagi.get("batas_kembali_dishub") or "").strip()[:5]
+            form_pagi = str(
+                data.jadwal_pagi.get("jam_formulir_pengisian") or ""
+            ).strip()[:5]
+            keluar_pagi = str(
+                data.jadwal_pagi.get("batas_keluar_dishub") or ""
+            ).strip()[:5]
+            kembali_pagi = str(
+                data.jadwal_pagi.get("batas_kembali_dishub") or ""
+            ).strip()[:5]
             val_keluar_pagi = f"{form_pagi}|{keluar_pagi}" if form_pagi else keluar_pagi
 
             try:
@@ -821,10 +856,18 @@ def update_penugasan_harian(id_penugasan: str, data: PenugasanUpdate):
 
         # Sinkronisasi Jadwal Operasional Sesi Siang jika disertakan
         if data.jadwal_siang and target_trayek:
-            form_siang = str(data.jadwal_siang.get("jam_formulir_pengisian") or "").strip()[:5]
-            keluar_siang = str(data.jadwal_siang.get("batas_keluar_dishub") or "").strip()[:5]
-            kembali_siang = str(data.jadwal_siang.get("batas_kembali_dishub") or "").strip()[:5]
-            val_keluar_siang = f"{form_siang}|{keluar_siang}" if form_siang else keluar_siang
+            form_siang = str(
+                data.jadwal_siang.get("jam_formulir_pengisian") or ""
+            ).strip()[:5]
+            keluar_siang = str(
+                data.jadwal_siang.get("batas_keluar_dishub") or ""
+            ).strip()[:5]
+            kembali_siang = str(
+                data.jadwal_siang.get("batas_kembali_dishub") or ""
+            ).strip()[:5]
+            val_keluar_siang = (
+                f"{form_siang}|{keluar_siang}" if form_siang else keluar_siang
+            )
 
             try:
                 cek_siang = (
@@ -877,33 +920,59 @@ def delete_penugasan_harian(id_penugasan: str):
         penugasan_item = cek.data[0]
         id_supir = penugasan_item.get("id_supir")
         tanggal = penugasan_item.get("tanggal")
+        target_trayek = penugasan_item.get("trayek")
+        target_bus = penugasan_item.get("nopol_kendaraan")
 
-        # Cascade Cleanup: Cari daily_reports supir ini pada tanggal penugasan
+        # Cascade Cleanup: Cari daily_reports supir ini pada tanggal penugasan spesifik untuk trayek dan armada ini
         if id_supir and tanggal:
             try:
-                reports_res = (
-                    supabase.table("daily_reports")
-                    .select("id")
-                    .eq("id_supir", id_supir)
-                    .eq("tanggal", str(tanggal))
+                user_email = id_supir
+                user_res = (
+                    supabase.table("users")
+                    .select("email")
+                    .eq("id", id_supir)
                     .execute()
                 )
+                if user_res.data:
+                    user_email = user_res.data[0]["email"]
+
+                rep_query = (
+                    supabase.table("daily_reports")
+                    .select("id")
+                    .or_(f"id_supir.eq.{user_email},id_supir.eq.{id_supir}")
+                    .eq("tanggal", str(tanggal))
+                )
+                if target_trayek:
+                    rep_query = rep_query.eq("trayek", target_trayek)
+                if target_bus:
+                    rep_query = rep_query.eq("bus", target_bus)
+
+                reports_res = rep_query.execute()
                 reports = reports_res.data or []
                 for rep in reports:
                     rep_id = rep.get("id")
                     if rep_id:
                         # 1. Hapus trip_sessions
-                        supabase.table("trip_sessions").delete().eq("laporan_id", rep_id).execute()
+                        supabase.table("trip_sessions").delete().eq(
+                            "laporan_id", rep_id
+                        ).execute()
                         # 2. Hapus inspections
-                        supabase.table("inspections").delete().eq("laporan_id", rep_id).execute()
+                        supabase.table("inspections").delete().eq(
+                            "laporan_id", rep_id
+                        ).execute()
                         # 3. Hapus daily_reports
-                        supabase.table("daily_reports").delete().eq("id", rep_id).execute()
+                        supabase.table("daily_reports").delete().eq(
+                            "id", rep_id
+                        ).execute()
             except Exception as e_cascade:
                 print("Warning cascade delete laporan:", e_cascade)
 
         # Terakhir, hapus record penugasan
         supabase.table("penugasan").delete().eq("id", id_penugasan).execute()
-        return {"pesan": "Penugasan dan laporan terkait berhasil dibersihkan.", "id": id_penugasan}
+        return {
+            "pesan": "Penugasan dan laporan terkait berhasil dibersihkan.",
+            "id": id_penugasan,
+        }
     except HTTPException as e:
         raise e
     except Exception as e:

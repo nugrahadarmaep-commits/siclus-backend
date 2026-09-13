@@ -22,32 +22,53 @@ WIB = timezone(timedelta(hours=7))
 # ==============================================================================
 def create_laporan_harian(data: LaporanHarianCreate, id_supir: str):
     try:
-        cek_laporan = (
+        # Cek apakah sudah ada laporan untuk supir ini dengan trayek dan armada yang sama
+        query = (
             supabase.table("daily_reports")
-            .select("*")
+            .select("*, trip_sessions(*)")
             .eq("id_supir", id_supir)
             .eq("tanggal", str(data.tanggal))
-            .execute()
         )
-        
+        if data.trayek:
+            query = query.eq("trayek", data.trayek)
+        if data.bus:
+            query = query.eq("bus", data.bus)
+
+        cek_laporan = query.order("created_at", desc=True).execute()
+
         if cek_laporan.data:
-            return cek_laporan.data[0]
-            
-        response = (
-            supabase.table("daily_reports")
-            .insert(
-                {
-                    "tanggal": str(data.tanggal),
-                    "id_supir": id_supir,
-                    "trayek": data.trayek,
-                    "bus": data.bus,
-                }
-            )
-            .execute()
-        )
+            # Periksa apakah ada laporan yang belum tuntas kedua sesi
+            for rep in cek_laporan.data:
+                sessions = rep.get("trip_sessions") or []
+                has_pagi = any(
+                    (s.get("tipe_sesi") or "").upper() == "PAGI"
+                    and s.get("km_tiba_kantor") is not None
+                    for s in sessions
+                )
+                has_siang = any(
+                    (s.get("tipe_sesi") or "").upper() == "SIANG"
+                    and s.get("km_tiba_kantor") is not None
+                    for s in sessions
+                )
+                # Jika belum tuntas kedua sesi, gunakan laporan ini kembali
+                if not (has_pagi and has_siang):
+                    return rep
+
+        # Jika belum ada laporan atau semua laporan sebelumnya untuk rute/armada ini sudah tuntas,
+        # buat record laporan harian baru
+        payload = {
+            "tanggal": str(data.tanggal),
+            "id_supir": id_supir,
+            "trayek": data.trayek,
+            "bus": data.bus,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        response = supabase.table("daily_reports").insert(payload).execute()
         if response.data:
             return response.data[0]
-        raise HTTPException(status_code=500, detail="Gagal membuat record laporan harian baru.")
+        raise HTTPException(
+            status_code=500, detail="Gagal membuat record laporan harian baru."
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

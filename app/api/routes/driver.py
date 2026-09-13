@@ -197,23 +197,15 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
         trayek_supir = None
         bus_supir = None
 
-        # 1. Wajib dari penugasan hari ini
+        # 1. Resolusi penugasan aktif hari ini
         try:
-            import datetime
+            from app.services.driver_service import get_driver_active_penugasan
 
-            hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
-
-            penugasan_res = (
-                supabase.table("penugasan")
-                .select("trayek, nopol_kendaraan")
-                .eq("id_supir", id_supir)
-                .eq("tanggal", hari_ini)
-                .limit(1)
-                .execute()
-            )
-            if penugasan_res.data:
-                trayek_supir = penugasan_res.data[0].get("trayek")
-                bus_supir = penugasan_res.data[0].get("nopol_kendaraan")
+            penugasan_info = get_driver_active_penugasan(email_supir)
+            active_task = penugasan_info.get("active")
+            if active_task:
+                trayek_supir = active_task.get("trayek")
+                bus_supir = active_task.get("nopol_kendaraan")
         except Exception as e_penugasan:
             print("Warning cek penugasan jadwal:", e_penugasan)
 
@@ -293,38 +285,23 @@ def get_penugasan_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
     yang ditugaskan oleh admin khusus untuk hari ini.
     """
     try:
-        # Cari ID supir dari email
-        user_response = (
-            supabase.table("users").select("id").eq("email", email_supir).execute()
-        )
-        if not user_response.data:
-            raise HTTPException(
-                status_code=404, detail="Akun pengemudi tidak ditemukan."
-            )
+        from app.services.driver_service import get_driver_active_penugasan
 
-        id_supir = user_response.data[0]["id"]
-        import datetime
+        penugasan_info = get_driver_active_penugasan(email_supir)
+        active_task = penugasan_info.get("active")
+        penugasan_list = penugasan_info.get("list") or []
 
-        hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
-
-        penugasan_response = (
-            supabase.table("penugasan")
-            .select("*")
-            .eq("id_supir", id_supir)
-            .eq("tanggal", hari_ini)
-            .limit(1)
-            .execute()
-        )
-
-        if not penugasan_response.data:
+        if not active_task:
             return {
                 "pesan": "Belum ada penugasan kendaraan untuk Anda hari ini.",
                 "data": None,
+                "penugasan_list": [],
             }
 
         return {
             "pesan": "Data penugasan kendaraan hari ini berhasil ditarik.",
-            "data": penugasan_response.data[0],
+            "data": active_task,
+            "penugasan_list": penugasan_list,
         }
     except HTTPException as e:
         raise e

@@ -2,6 +2,7 @@
 # ROUTE: LAPORAN OPERASIONAL PENGEMUDI (DRIVER)
 # ==============================================================================
 
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
@@ -66,21 +67,22 @@ def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(securit
     tags=["Pengemudi - Operasional Harian"],
     summary="Ambil Laporan Operasional Pengemudi Hari Ini",
 )
-def get_laporan_hari_ini(email_supir: str = Depends(verifikasi_token)):
+def get_laporan_hari_ini(
+    trayek: Optional[str] = None,
+    bus: Optional[str] = None,
+    laporan_id: Optional[str] = None,
+    email_supir: str = Depends(verifikasi_token),
+):
     try:
-        import datetime
-        hari_ini = datetime.datetime.now().strftime("%Y-%m-%d")
-        response = (
-            supabase.table("daily_reports")
-            .select("*, trip_sessions(*), inspections(*)")
-            .eq("id_supir", email_supir)
-            .eq("tanggal", hari_ini)
-            .limit(1)
-            .execute()
+        from app.services.driver_service import get_driver_active_report
+
+        report = get_driver_active_report(
+            email_supir=email_supir,
+            trayek=trayek,
+            bus=bus,
+            laporan_id=laporan_id,
         )
-        if response.data and len(response.data) > 0:
-            return {"status": "sukses", "data": response.data[0]}
-        return {"status": "sukses", "data": None}
+        return {"status": "sukses", "data": report}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
