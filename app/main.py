@@ -48,9 +48,22 @@ app = FastAPI(
 
 # ─── KONFIGURASI KEAMANAN CORS ──────────────────────────────────────────────
 
+import os
+
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://siclus-frontend.vercel.app",
+    "https://siclus.vercel.app"
+]
+
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    ALLOWED_ORIGINS.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
