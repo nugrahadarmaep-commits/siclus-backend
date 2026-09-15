@@ -2,7 +2,7 @@
 # SERVICE: DRIVER LIFECYCLE & MULTI-ASSIGNMENT RESOLUTION
 # ==============================================================================
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from app.db.database import supabase
 

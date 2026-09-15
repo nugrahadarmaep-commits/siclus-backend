@@ -1,16 +1,10 @@
-# ==========================================
-# 1. Environment Variables & Secrets
-# ==========================================
+# enviroment
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 *.cert
-
-# ==========================================
-# 2. Virtual Environments
-# ==========================================
 .venv/
 venv/
 ENV/
@@ -19,18 +13,14 @@ env.bak/
 venv.bak/
 .python-version-backup
 
-# ==========================================
-# 3. Python Bytecode & Cache
-# ==========================================
+# cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 
-# ==========================================
-# 4. Testing, Linting & Coverage
-# ==========================================
+# tetsing
 .pytest_cache/
 .coverage
 .coverage.*
@@ -38,27 +28,19 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# ==========================================
-# 5. Build, Distribution & Packaging
-# ==========================================
+# package distribution
 build/
 dist/
 *.egg-info/
 *.egg
 .eggs/
-
-# ==========================================
-# 6. IDE, Code Editor & Tools
-# ==========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# ==========================================
-# 7. OS Generated & Temporary Files
-# ==========================================
+# os generate and temporary files
 .DS_Store
 .DS_Store?
 ._*

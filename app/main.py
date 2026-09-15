@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.auth import router as auth_router
 from app.api.routes.laporan import router as laporan_router
-from app.api.routes.admin import router as admin_router
+from app.api.routes.admin_dashboard_routes import router as admin_dashboard_router
+from app.api.routes.admin_users_routes import router as admin_users_router
+from app.api.routes.admin_penugasan_routes import router as admin_penugasan_router
 from app.api.routes.driver import router as driver_router
 
 # ─── DEFINISI TAGS METADATA (DOKUMENTASI OPENAPI / SWAGGER) ─────────────────
@@ -20,8 +22,8 @@ tags_metadata = [
         "description": "Kelola data akun pengemudi/supir (Pendaftaran, Perubahan Data, Hapus Akun).",
     },
     {
-        "name": "Admin - Manajemen Jadwal",
-        "description": "Pengaturan batas waktu keberangkatan Dishub dan kedatangan di titik awal rute.",
+        "name": "Admin - Penugasan",
+        "description": "Pengaturan batas waktu keberangkatan Dishub dan penugasan armada.",
     },
     {
         "name": "Admin - Profil",
@@ -55,7 +57,9 @@ app.add_middleware(
 
 # ─── PENDAFTARAN ROUTER MESIN ───────────────────────────────────────────────
 app.include_router(auth_router, prefix="/api/auth")
-app.include_router(admin_router, prefix="/api/admin")
+app.include_router(admin_dashboard_router, prefix="/api/admin")
+app.include_router(admin_users_router, prefix="/api/admin")
+app.include_router(admin_penugasan_router, prefix="/api/admin")
 app.include_router(laporan_router, prefix="/api/laporan")
 app.include_router(driver_router, prefix="/api/driver")
 

@@ -10,5 +10,4 @@ API_KEY = os.getenv("SUPABASE_KEY")
 if not API_URL or not API_KEY:
     raise Exception("token belum di taruh ke .env!")
 
-# koneksi api
 supabase: Client = create_client(API_URL, API_KEY)

@@ -2,7 +2,6 @@
 # ROUTE: PENGEMUDI (DRIVER)
 # ==============================================================================
 
-from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
@@ -10,7 +9,6 @@ import time
 
 from app.core.config import settings
 from app.db.database import supabase
-from datetime import date
 
 router = APIRouter()
 security = HTTPBearer()
@@ -109,7 +107,7 @@ async def update_foto_profil(
         nama_file_baru = f"avatar_{nama_prefix}_{int(time.time())}.{ekstensi}"
 
         isi_gambar = await foto.read()
-        response_storage = supabase.storage.from_("foto_profil").upload(
+        supabase.storage.from_("foto_profil").upload(
             file=isi_gambar,
             path=nama_file_baru,
             file_options={"content-type": foto.content_type},
@@ -192,7 +190,7 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             )
 
         user_data = user_response.data[0]
-        id_supir = user_data.get("id")
+        user_data.get("id")
 
         trayek_supir = None
         bus_supir = None
@@ -222,10 +220,10 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
 
         jadwal_list = jadwal_response.data or []
 
-        has_pagi = any(
+        any(
             (j.get("tipe_sesi") or "").upper() == "PAGI" for j in jadwal_list
         )
-        has_siang = any(
+        any(
             (j.get("tipe_sesi") or "").upper() == "SIANG" for j in jadwal_list
         )
 
