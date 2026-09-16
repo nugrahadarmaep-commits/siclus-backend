@@ -3,6 +3,24 @@ from datetime import date
 from fastapi import HTTPException, status
 from app.db.database import supabase
 
+def _get_user_lookup_map():
+    """Mengambil peta profil supir untuk in-memory join aman tanpa ketergantungan Foreign Key."""
+    try:
+        res = (
+            supabase.table("users")
+            .select("id, nama, email, trayek, bus, role, foto_profil")
+            .execute()
+        )
+        user_map = {}
+        for u in res.data or []:
+            if u.get("id"):
+                user_map[u["id"]] = u
+            if u.get("email"):
+                user_map[u["email"]] = u
+        return user_map
+    except Exception:
+        return {}
+
 def get_dashboard_metrics():
     """Menghitung metrik kehadiran dan keterlambatan driver hari ini."""
     try:
@@ -15,7 +33,7 @@ def get_dashboard_metrics():
             .in_("role", ["pengemudi", "driver", "DRIVER", "Driver"])
             .execute()
         )
-        total_supir = len(users_res.data)
+        total_supir = len(users_res.data or [])
 
         # Hitung laporan yang masuk hari ini
         reports_res = (
@@ -24,7 +42,7 @@ def get_dashboard_metrics():
             .eq("tanggal", tanggal_hari_ini)
             .execute()
         )
-        data_laporan_hari_ini = reports_res.data
+        data_laporan_hari_ini = reports_res.data or []
 
         total_jalan = len(data_laporan_hari_ini)
         total_absen = max(0, total_supir - total_jalan)
@@ -53,23 +71,38 @@ def get_dashboard_metrics():
             detail=f"Gagal hitung metrik dashboard: {str(e)}",
         )
 
-def _get_user_lookup_map():
-    """Mengambil peta profil supir untuk in-memory join aman tanpa ketergantungan Foreign Key."""
+def get_operasional_hari_ini():
+    """Mengambil laporan operasional dan seluruh sesi untuk HARI INI."""
     try:
-        res = (
-            supabase.table("users")
-            .select("id, nama, email, trayek, bus, role, foto_profil")
+        tanggal_hari_ini = str(date.today())
+        user_map = _get_user_lookup_map()
+        
+        # Select all columns from trip_sessions so frontend has all timestamps
+        response = (
+            supabase.table("daily_reports")
+            .select("*, trip_sessions(*)")
+            .eq("tanggal", tanggal_hari_ini)
+            .order("created_at", desc=True)
             .execute()
         )
-        user_map = {}
-        for u in res.data or []:
-            if u.get("id"):
-                user_map[u["id"]] = u
-            if u.get("email"):
-                user_map[u["email"]] = u
-        return user_map
-    except Exception:
-        return {}
+
+        laporan_list = response.data or []
+        for laporan in laporan_list:
+            supir = user_map.get(laporan.get("id_supir"), {})
+            laporan["users"] = {
+                "nama": supir.get("nama") or laporan.get("id_supir") or "-",
+                "email": supir.get("email", "-"),
+                "foto_profil": supir.get("foto_profil") or None,
+            }
+
+        return {
+            "pesan": "Data operasional hari ini ditarik.",
+            "data": laporan_list
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 def get_rekap_operasional():
     """Mengambil seluruh data rekap harian lengkap beserta inspeksi dan sesi."""
@@ -98,40 +131,6 @@ def get_rekap_operasional():
             "total_data": len(laporan_list),
             "data": laporan_list,
         }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-def get_riwayat_harian_grouped():
-    """Mengambil riwayat laporan operasional yang dikelompokkan berdasarkan tanggal."""
-    try:
-        user_map = _get_user_lookup_map()
-        response = (
-            supabase.table("daily_reports")
-            .select("*, trip_sessions(status_waktu, tipe_sesi)")
-            .order("tanggal", desc=True)
-            .execute()
-        )
-
-        grup_tanggal = {}
-        for laporan in response.data or []:
-            supir = user_map.get(laporan.get("id_supir"), {})
-            laporan["users"] = {
-                "nama": supir.get("nama") or laporan.get("id_supir") or "-",
-                "email": supir.get("email", "-"),
-                "foto_profil": supir.get("foto_profil") or None,
-            }
-            tgl = laporan.get("tanggal")
-            if tgl not in grup_tanggal:
-                grup_tanggal[tgl] = []
-            grup_tanggal[tgl].append(laporan)
-
-        hasil_format = [
-            {"tanggal": tgl, "laporan": isi} for tgl, isi in grup_tanggal.items()
-        ]
-
-        return {"pesan": "Riwayat harian ditarik.", "data": hasil_format}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)

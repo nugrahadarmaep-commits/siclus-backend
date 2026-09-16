@@ -7,7 +7,7 @@ from app.api.routes.admin_users_routes import router as admin_users_router
 from app.api.routes.admin_penugasan_routes import router as admin_penugasan_router
 from app.api.routes.driver import router as driver_router
 
-# ─── DEFINISI TAGS METADATA (DOKUMENTASI OPENAPI / SWAGGER) ─────────────────
+# tags metadata swagger ui
 tags_metadata = [
     {
         "name": "Autentikasi",
@@ -39,15 +39,13 @@ tags_metadata = [
     },
 ]
 
-# ─── INISIALISASI MESIN UTAMA ───────────────────────────────────────────────
 app = FastAPI(
     title="SICLUS API - Sistem Informasi Catatan & Laporan Pengemudi Bus",
     description="Backend API resmi untuk manajemen operasional, inspeksi kendaraan, dan rekapitulasi kehadiran pengemudi.",
     openapi_tags=tags_metadata,
 )
 
-# ─── KONFIGURASI KEAMANAN CORS ──────────────────────────────────────────────
-
+# konfigurasi cors
 import os
 
 ALLOWED_ORIGINS = [
@@ -69,7 +67,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── PENDAFTARAN ROUTER MESIN ───────────────────────────────────────────────
+# router api
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(admin_dashboard_router, prefix="/api/admin")
 app.include_router(admin_users_router, prefix="/api/admin")

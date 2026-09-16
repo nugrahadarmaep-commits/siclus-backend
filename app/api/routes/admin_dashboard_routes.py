@@ -23,9 +23,9 @@ def get_rekap(email_admin: str = Depends(verifikasi_admin)):
 
 
 @router.get(
-    "/riwayat-harian",
+    "/operasional-hari-ini",
     tags=["Admin - Dashboard & Rekap"],
-    summary="Riwayat Operasional per Tanggal",
+    summary="Operasional Driver Hari Ini",
 )
-def get_riwayat_harian(email_admin: str = Depends(verifikasi_admin)):
-    return admin_dashboard_service.get_riwayat_harian_grouped()
+def get_operasional_hari_ini(email_admin: str = Depends(verifikasi_admin)):
+    return admin_dashboard_service.get_operasional_hari_ini()
