@@ -1,67 +1,29 @@
-# ==============================================================================
-# ROUTE: LAPORAN OPERASIONAL PENGEMUDI (DRIVER)
-# ==============================================================================
-
+import time
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
-import time
 
+from app.api.dependencies import verifikasi_token
+from app.db.database import supabase
 from app.schemas.laporan import LaporanHarianCreate
 from app.schemas.inspeksi import InspeksiCreate
 from app.schemas.perjalanan import (
     SesiCP1Create,
+    SesiCP2Update,
     SesiCP3Update,
-    SesiCP4Update,
 )
+from app.services.driver_service import get_driver_active_report
 from app.services.laporan_service import (
     create_laporan_harian,
     create_inspeksi_kendaraan,
     proses_cp1,
+    proses_cp2,
     proses_cp3,
-    proses_cp4,
 )
-from app.core.config import settings
-from app.db.database import supabase
 
 router = APIRouter()
-security = HTTPBearer()
 
 
-# ==============================================================================
-# VERIFIKASI KEAMANAN PENGEMUDI (TOKEN JWT)
-# ==============================================================================
-def verifikasi_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        email_supir = payload.get("sub")
-
-        if email_supir is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Kredensial tidak valid. Payload token kosong.",
-            )
-        return email_supir
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sesi telah kedaluwarsa. Silakan login kembali.",
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token autentikasi tidak valid atau telah dimanipulasi.",
-        )
-
-
-# ==============================================================================
-# AMBIL LAPORAN HARIAN HARI INI
-# ==============================================================================
+# laporan harian aktif hari ini
 @router.get(
     "/hari-ini",
     tags=["Pengemudi - Operasional Harian"],
@@ -74,8 +36,6 @@ def get_laporan_hari_ini(
     email_supir: str = Depends(verifikasi_token),
 ):
     try:
-        from app.services.driver_service import get_driver_active_report
-
         report = get_driver_active_report(
             email_supir=email_supir,
             trayek=trayek,
@@ -90,9 +50,7 @@ def get_laporan_hari_ini(
         )
 
 
-# ==============================================================================
-# INISIALISASI LAPORAN HARIAN
-# ==============================================================================
+# inisialisasi laporan harian
 @router.post(
     "/mulai",
     tags=["Pengemudi - Operasional Harian"],
@@ -104,9 +62,7 @@ def mulai_laporan(
     return create_laporan_harian(data, email_supir)
 
 
-# ==============================================================================
-# INSPEKSI KELAYAKAN ARMADA BUS
-# ==============================================================================
+# inspeksi kelayakan armada bus
 @router.post(
     "/inspeksi",
     tags=["Pengemudi - Operasional Harian"],
@@ -118,9 +74,7 @@ def inspeksi_kendaraan(
     return create_inspeksi_kendaraan(laporan_id, data)
 
 
-# ==============================================================================
-# CHECKPOINT 1: KELUAR GARASI DISHUB
-# ==============================================================================
+# checkpoint 1: keluar garasi dishub
 @router.post(
     "/sesi/cp1",
     tags=["Pengemudi - Operasional Harian"],
@@ -132,16 +86,23 @@ def sesi_checkpoint_1(
     return proses_cp1(laporan_id, data, email_supir)
 
 
+# checkpoint 2: tiba di titik akhir rute / sekolah
+@router.put(
+    "/sesi/cp2/{sesi_id}",
+    tags=["Pengemudi - Operasional Harian"],
+    summary="Simpan Checkpoint 2 (Tiba di Titik Finish Rute / Sekolah)",
+)
+def sesi_checkpoint_2(
+    sesi_id: str, data: SesiCP2Update, email_supir: str = Depends(verifikasi_token)
+):
+    return proses_cp2(sesi_id, data, email_supir)
 
 
-
-# ==============================================================================
-# CHECKPOINT 3: SELESAI TITIK AKHIR RUTE
-# ==============================================================================
+# checkpoint 3: kembali ke garasi dishub
 @router.put(
     "/sesi/cp3/{sesi_id}",
     tags=["Pengemudi - Operasional Harian"],
-    summary="Simpan Checkpoint 3 (Selesai Titik Finish Rute)",
+    summary="Simpan Checkpoint 3 (Kembali Masuk Garasi Dishub)",
 )
 def sesi_checkpoint_3(
     sesi_id: str, data: SesiCP3Update, email_supir: str = Depends(verifikasi_token)
@@ -149,23 +110,7 @@ def sesi_checkpoint_3(
     return proses_cp3(sesi_id, data, email_supir)
 
 
-# ==============================================================================
-# CHECKPOINT 4: KEMBALI KE GARASI DISHUB
-# ==============================================================================
-@router.put(
-    "/sesi/cp4/{sesi_id}",
-    tags=["Pengemudi - Operasional Harian"],
-    summary="Simpan Checkpoint 4 (Kembali Masuk Garasi Dishub)",
-)
-def sesi_checkpoint_4(
-    sesi_id: str, data: SesiCP4Update, email_supir: str = Depends(verifikasi_token)
-):
-    return proses_cp4(sesi_id, data, email_supir)
-
-
-# ==============================================================================
-# VALIDASI SWAFOTO (SELFIE) KEHADIRAN
-# ==============================================================================
+# validasi swafoto (selfie) kehadiran pengemudi
 @router.post(
     "/upload-selfie",
     tags=["Pengemudi - Operasional Harian"],
@@ -174,8 +119,6 @@ def sesi_checkpoint_4(
 async def upload_selfie(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_token)
 ):
-
-
     try:
         ekstensi = foto.filename.split(".")[-1].lower() if "." in foto.filename else ""
         if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
@@ -184,7 +127,7 @@ async def upload_selfie(
             elif foto.content_type == "image/png":
                 ekstensi = "png"
             elif foto.content_type == "image/webp":
-                ekstensi    = "webp"
+                ekstensi = "webp"
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -195,7 +138,6 @@ async def upload_selfie(
         nama_file_baru = f"{nama_prefix}_{int(time.time())}.{ekstensi}"
 
         isi_gambar = await foto.read()
-
         supabase.storage.from_("selfie_driver").upload(
             file=isi_gambar,
             path=nama_file_baru,
@@ -210,9 +152,8 @@ async def upload_selfie(
             "pesan": "Foto validasi kehadiran berhasil diunggah.",
             "url_foto": url_publik,
         }
-
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

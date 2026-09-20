@@ -1,55 +1,13 @@
-# ==============================================================================
-# ROUTE: PENGEMUDI (DRIVER)
-# ==============================================================================
-
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
 import time
-
-from app.core.config import settings
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from app.api.dependencies import verifikasi_pengemudi
 from app.db.database import supabase
+from app.services.driver_service import get_driver_active_penugasan
 
 router = APIRouter()
-security = HTTPBearer()
 
 
-# ==============================================================================
-# VERIFIKASI KEAMANAN PENGEMUDI (TOKEN JWT)
-# ==============================================================================
-def verifikasi_pengemudi(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> str:
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
-        email_user = payload.get("sub")
-
-        if not email_user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Kredensial tidak valid. Payload token kosong.",
-            )
-
-        return email_user
-
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Sesi telah kedaluwarsa. Silakan login kembali.",
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token autentikasi tidak valid atau telah dimanipulasi.",
-        )
-
-
-# ==============================================================================
-# PROFIL PENGEMUDI
-# ==============================================================================
+# profil pengemudi
 @router.get(
     "/profil",
     tags=["Pengemudi - Akun & Jadwal"],
@@ -63,19 +21,15 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
             .eq("email", email_supir)
             .execute()
         )
-
         data_user = response.data
-
         if not data_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Data profil pengemudi tidak ditemukan di dalam sistem.",
             )
-
         return {"pesan": "Data profil berhasil ditarik.", "data": data_user[0]}
-
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -83,9 +37,7 @@ def get_profil_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==============================================================================
-# UNGGAH FOTO PROFIL PENGEMUDI
-# ==============================================================================
+# unggah foto profil pengemudi
 @router.put(
     "/profil/foto",
     tags=["Pengemudi - Akun & Jadwal"],
@@ -95,7 +47,6 @@ async def update_foto_profil(
     foto: UploadFile = File(...), email_supir: str = Depends(verifikasi_pengemudi)
 ):
     try:
-
         ekstensi = foto.filename.split(".")[-1].lower()
         if ekstensi not in ["jpg", "jpeg", "png", "webp"]:
             raise HTTPException(
@@ -113,18 +64,15 @@ async def update_foto_profil(
             file_options={"content-type": foto.content_type},
         )
 
-        url_publik = supabase.storage.from_("foto_profil").get_public_url(
-            nama_file_baru
-        )
+        url_publik = supabase.storage.from_("foto_profil").get_public_url(nama_file_baru)
 
         supabase.table("users").update({"foto_profil": url_publik}).eq(
             "email", email_supir
         ).execute()
 
         return {"pesan": "Foto profil berhasil diperbarui!", "foto_profil": url_publik}
-
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -132,9 +80,7 @@ async def update_foto_profil(
         )
 
 
-# ==============================================================================
-# HISTORI RIWAYAT PERJALANAN PENGEMUDI
-# ==============================================================================
+# histori riwayat perjalanan pengemudi
 @router.get(
     "/riwayat",
     tags=["Pengemudi - Akun & Jadwal"],
@@ -149,15 +95,12 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
             .order("tanggal", desc=True)
             .execute()
         )
-
-        data_riwayat = response.data
-
+        data_riwayat = response.data or []
         return {
             "pesan": "Riwayat perjalanan berhasil ditarik.",
             "total_riwayat": len(data_riwayat),
             "data": data_riwayat,
         }
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -165,40 +108,28 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==============================================================================
-# JADWAL PENUGASAN OPERASIONAL PENGEMUDI
-# ==============================================================================
+# jadwal penugasan operasional pengemudi
 @router.get(
     "/jadwal",
     tags=["Pengemudi - Akun & Jadwal"],
     summary="Jadwal Penugasan Operasional Pengemudi",
 )
 def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
-    """
-    Menampilkan batas waktu toleransi keberangkatan dan kedatangan
-    berdasarkan rute/trayek yang ditugaskan kepada pengemudi saat ini.
-    """
+    """Menampilkan batas toleransi waktu keberangkatan dan kedatangan berdasarkan rute."""
     try:
         user_response = (
             supabase.table("users").select("id").eq("email", email_supir).execute()
         )
-
         if not user_response.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Data akun pengemudi tidak ditemukan.",
             )
 
-        user_data = user_response.data[0]
-        user_data.get("id")
-
         trayek_supir = None
         bus_supir = None
 
-        # 1. Resolusi penugasan aktif hari ini
         try:
-            from app.services.driver_service import get_driver_active_penugasan
-
             penugasan_info = get_driver_active_penugasan(email_supir)
             active_task = penugasan_info.get("active")
             if active_task:
@@ -208,26 +139,16 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             print("Warning cek penugasan jadwal:", e_penugasan)
 
         if not trayek_supir:
-            return []  # Tidak ada penugasan hari ini, tidak ada jadwal operasional
+            return []
 
-        # 2. Ambil konfigurasi cut-off dari tabel schedules
         jadwal_response = (
             supabase.table("schedules")
             .select("*")
             .ilike("trayek", trayek_supir)
             .execute()
         )
-
         jadwal_list = jadwal_response.data or []
 
-        any(
-            (j.get("tipe_sesi") or "").upper() == "PAGI" for j in jadwal_list
-        )
-        any(
-            (j.get("tipe_sesi") or "").upper() == "SIANG" for j in jadwal_list
-        )
-
-        # 3. Format response jadwal per sesi tanpa manipulasi waktu
         enriched_list = []
         for j in jadwal_list:
             sesi = (j.get("tipe_sesi") or "PAGI").upper()
@@ -259,9 +180,8 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             "bus": bus_supir,
             "data": enriched_list,
         }
-
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -269,22 +189,15 @@ def get_jadwal_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
         )
 
 
-# ==============================================================================
-# PENUGASAN KENDARAAN (SUGESTI DRIVER)
-# ==============================================================================
+# penugasan kendaraan hari ini
 @router.get(
     "/penugasan/hari-ini",
     tags=["Pengemudi - Akun & Jadwal"],
     summary="Data Penugasan Kendaraan Hari Ini (Sugesti)",
 )
 def get_penugasan_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
-    """
-    Menarik data Nopol, Jenis Kendaraan, Kapasitas, dan Trayek
-    yang ditugaskan oleh admin khusus untuk hari ini.
-    """
+    """Menarik data penugasan kendaraan hari ini untuk pengemudi aktif."""
     try:
-        from app.services.driver_service import get_driver_active_penugasan
-
         penugasan_info = get_driver_active_penugasan(email_supir)
         active_task = penugasan_info.get("active")
         penugasan_list = penugasan_info.get("list") or []
@@ -301,8 +214,8 @@ def get_penugasan_hari_ini(email_supir: str = Depends(verifikasi_pengemudi)):
             "data": active_task,
             "penugasan_list": penugasan_list,
         }
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -51,4 +51,11 @@ class UserUpdate(BaseModel):
 
 # update profil pribadi admin (nama)
 class AdminProfileUpdate(BaseModel):
-    nama_lengkap: str
+    nama_lengkap: str
+
+
+# konfirmasi keamanan saat admin menghapus supir
+class AdminDeleteDriverConfirm(BaseModel):
+    email_admin: str = Field(..., description="Email administrator yang sedang login")
+    password_admin: str = Field(..., description="Password administrator untuk konfirmasi keamanan")
+

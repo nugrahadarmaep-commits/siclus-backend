@@ -1,7 +1,3 @@
-"""
-SICLUS CLI Management Tool: Admin Account Provisioning
-"""
-
 import sys
 import getpass
 import argparse

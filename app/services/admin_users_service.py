@@ -2,7 +2,7 @@ import time
 from typing import Optional
 from fastapi import HTTPException, status, UploadFile
 from app.db.database import supabase
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from app.schemas.user import UserRegister, UserUpdate, AdminProfileUpdate
 
 def get_all_drivers():
@@ -26,7 +26,7 @@ def get_all_drivers():
 
 
 def create_driver(data: UserRegister):
-    """Menambahkan akun supir/driver baru oleh admin."""
+    """Menambahkan akun driver baru oleh admin."""
     id_clean = data.id.strip().upper()
     email_clean = data.email.strip().lower()
     nama_clean = (data.nama_lengkap or "").strip()
@@ -35,6 +35,12 @@ def create_driver(data: UserRegister):
     if not id_clean or not email_clean or not pw_clean:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Data tidak boleh kosong."
+        )
+        
+    if not email_clean.endswith("@siclus.id"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email driver wajib menggunakan domain resmi @siclus.id",
         )
 
     if not nama_clean:
@@ -174,21 +180,68 @@ def update_driver(user_id: str, data: UserUpdate):
         )
 
 
-def delete_driver(user_id: str):
-    """Menghapus akun supir/driver dari sistem."""
+def delete_driver(
+    user_id: str,
+    email_admin: Optional[str] = None,
+    password_admin: Optional[str] = None,
+):
+    """Menghapus akun supir/driver dari sistem dengan validasi keamanan kredensial admin."""
+    # 1. Validasi kredensial administrator jika disediakan
+    if email_admin and password_admin:
+        admin_res = (
+            supabase.table("users")
+            .select("*")
+            .ilike("email", email_admin.strip().lower())
+            .execute()
+        )
+        if not admin_res.data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email administrator tidak ditemukan.",
+            )
+        admin_user = admin_res.data[0]
+        if str(admin_user.get("role", "")).lower() != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Hanya akun Administrator yang berwenang menghapus pengemudi.",
+            )
+        if not verify_password(password_admin, admin_user.get("password", "")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password administrator salah. Tindakan penghapusan dibatalkan demi keamanan.",
+            )
+
+    # 2. Cek apakah target yang akan dihapus memang supir
+    target_res = (
+        supabase.table("users").select("id, role, nama").eq("id", user_id).execute()
+    )
+    if not target_res.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Akun driver tidak ditemukan."
+        )
+    target_user = target_res.data[0]
+    if str(target_user.get("role", "")).lower() == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tidak dapat menghapus sesama akun administrator.",
+        )
+
     try:
         response = supabase.table("users").delete().eq("id", user_id).execute()
         if not response.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Supir tidak ditemukan."
             )
-        return {"pesan": f"Akun {user_id} dihapus."}
+        return {
+            "pesan": f"Akun driver {target_user.get('nama', user_id)} berhasil dihapus permanen."
+        }
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
+
 
 
 def update_admin_profile(email_admin: str, data: AdminProfileUpdate):

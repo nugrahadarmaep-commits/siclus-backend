@@ -1,6 +1,4 @@
-# ==============================================================================
-# ROUTE: AUTENTIKASI (LOGIN)
-# ==============================================================================
+# rute autentikasi (login)
 
 from fastapi import APIRouter
 from app.schemas.user import UserLogin

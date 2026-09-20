@@ -1,9 +1,16 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, UploadFile, File
 from app.api.dependencies import verifikasi_admin
 from app.services import admin_users_service
-from app.schemas.user import UserRegister, UserUpdate, AdminProfileUpdate
+from app.schemas.user import (
+    UserRegister,
+    UserUpdate,
+    AdminProfileUpdate,
+    AdminDeleteDriverConfirm,
+)
 
 router = APIRouter()
+
 
 @router.get(
     "/users",
@@ -39,8 +46,32 @@ def edit_driver(
     tags=["Admin - Manajemen Pengemudi"],
     summary="Hapus Akun Pengemudi",
 )
-def hapus_driver(user_id: str, email_admin: str = Depends(verifikasi_admin)):
+def hapus_driver(
+    user_id: str,
+    data: Optional[AdminDeleteDriverConfirm] = None,
+    email_admin: str = Depends(verifikasi_admin),
+):
+    if data and data.password_admin:
+        return admin_users_service.delete_driver(
+            user_id, data.email_admin or email_admin, data.password_admin
+        )
     return admin_users_service.delete_driver(user_id)
+
+
+@router.post(
+    "/users/{user_id}/hapus",
+    tags=["Admin - Manajemen Pengemudi"],
+    summary="Hapus Akun Pengemudi dengan Verifikasi Kredensial Admin",
+)
+def hapus_driver_dengan_verifikasi(
+    user_id: str,
+    data: AdminDeleteDriverConfirm,
+    email_admin: str = Depends(verifikasi_admin),
+):
+    return admin_users_service.delete_driver(
+        user_id, data.email_admin or email_admin, data.password_admin
+    )
+
 
 
 @router.put(

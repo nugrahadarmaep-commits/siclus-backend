@@ -5,6 +5,7 @@ from app.schemas.penugasan import PenugasanCreate, PenugasanUpdate
 
 router = APIRouter()
 
+
 @router.get(
     "/penugasan",
     tags=["Admin - Penugasan"],
@@ -47,3 +48,14 @@ def delete_penugasan_harian(
     id_penugasan: str, email_admin: str = Depends(verifikasi_admin)
 ):
     return admin_penugasan_service.delete_penugasan_harian(id_penugasan)
+
+
+@router.post(
+    "/penugasan/{id_penugasan}/batal",
+    tags=["Admin - Penugasan"],
+    summary="Batalkan Sisa Operasional Penugasan Supir",
+)
+def batalkan_operasional_penugasan(
+    id_penugasan: str, email_admin: str = Depends(verifikasi_admin)
+):
+    return admin_penugasan_service.batalkan_operasional_penugasan(id_penugasan)

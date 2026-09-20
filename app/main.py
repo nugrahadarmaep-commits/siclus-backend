@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.auth import router as auth_router
@@ -31,7 +32,7 @@ tags_metadata = [
     },
     {
         "name": "Pengemudi - Operasional Harian",
-        "description": "Alur pelaporan operasional supir: Checkpoint 1 sampai 4, inspeksi armada, dan swafoto (selfie).",
+        "description": "Alur pelaporan operasional supir: Checkpoint 1 sampai 3, inspeksi armada, dan swafoto (selfie).",
     },
     {
         "name": "Pengemudi - Akun & Jadwal",
@@ -46,13 +47,11 @@ app = FastAPI(
 )
 
 # konfigurasi cors
-import os
-
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
     "https://siclus-frontend.vercel.app",
-    "https://siclus.vercel.app"
+    "https://siclus.vercel.app",
 ]
 
 frontend_url = os.getenv("FRONTEND_URL")

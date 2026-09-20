@@ -1,16 +1,11 @@
-# ==============================================================================
-# SERVICE: AUTENTIKASI PENGGUNA (LOGIN & TOKEN)
-# ==============================================================================
-
 from fastapi import HTTPException, status
 from app.schemas.user import UserLogin
 from app.core.security import create_access_token, verify_password
 from app.db.database import supabase
 
 
+# service: autentikasi pengguna (login & token)
 def proses_login_supir(data_login: UserLogin):
-
-    # Ambil identitas login (bisa dikirim via field 'id' atau 'email')
     login_id = (data_login.id or data_login.email or "").strip()
     if not login_id:
         raise HTTPException(
@@ -24,35 +19,21 @@ def proses_login_supir(data_login: UserLogin):
             detail="Password wajib minimal 8 karakter.",
         )
 
-    # Mencari data pengguna di database (prioritas: jika ada '@' cari email, selain itu cari ID)
     try:
-        if "@" in login_id:
-            response = (
-                supabase.table("users").select("*").eq("email", login_id).execute()
-            )
-        else:
-            response = supabase.table("users").select("*").eq("id", login_id).execute()
-
+        # cari user berdasarkan email atau id dalam satu kueri
+        response = (
+            supabase.table("users")
+            .select("*")
+            .or_(f"email.eq.{login_id},id.eq.{login_id}")
+            .execute()
+        )
         db_user_list = response.data
-
-        if not db_user_list:
-            if "@" in login_id:
-                alt_response = (
-                    supabase.table("users").select("*").eq("id", login_id).execute()
-                )
-            else:
-                alt_response = (
-                    supabase.table("users").select("*").eq("email", login_id).execute()
-                )
-            db_user_list = alt_response.data
-
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Terjadi kesalahan pada koneksi database: {str(e)}",
         )
 
-    # validation data pengguna
     if not db_user_list:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -62,7 +43,6 @@ def proses_login_supir(data_login: UserLogin):
 
     db_user = db_user_list[0]
 
-    # sandi validation
     if not verify_password(data_login.password, db_user["password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -70,7 +50,7 @@ def proses_login_supir(data_login: UserLogin):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # akses token jwt
+    # pembuatan token jwt
     isi_tiket = {
         "sub": db_user["email"],
         "id": db_user["id"],
@@ -78,7 +58,6 @@ def proses_login_supir(data_login: UserLogin):
     }
     token_jwt = create_access_token(data=isi_tiket)
 
-    # pengembalian data respons
     return {
         "access_token": token_jwt,
         "token_type": "bearer",

@@ -1,8 +1,44 @@
 from datetime import datetime, timezone
+from typing import Optional
 from fastapi import HTTPException, status
 from app.db.database import supabase
 from app.schemas.penugasan import PenugasanCreate, PenugasanUpdate
 from app.services.admin_dashboard_service import _get_user_lookup_map
+
+
+def _sync_schedule(trayek: str, tipe_sesi: str, jadwal: Optional[dict]):
+    """Sinkronisasi jadwal operasional ke tabel schedules."""
+    if not jadwal or not trayek:
+        return
+
+    form = str(jadwal.get("jam_formulir_pengisian") or "").strip()[:5]
+    keluar = str(jadwal.get("batas_keluar_dishub") or "").strip()[:5]
+    kembali = str(jadwal.get("batas_kembali_dishub") or "").strip()[:5]
+    val_keluar = f"{form}|{keluar}" if form else keluar
+
+    try:
+        cek = (
+            supabase.table("schedules")
+            .select("id")
+            .ilike("trayek", trayek)
+            .eq("tipe_sesi", tipe_sesi)
+            .execute()
+        )
+        payload = {
+            "batas_keluar_dishub": val_keluar,
+            "batas_tiba_start": kembali,
+        }
+        if cek.data:
+            supabase.table("schedules").update(payload).eq("id", cek.data[0]["id"]).execute()
+        else:
+            supabase.table("schedules").insert({
+                "trayek": trayek,
+                "tipe_sesi": tipe_sesi,
+                **payload,
+            }).execute()
+    except Exception as err:
+        print(f"Warning sync schedule {tipe_sesi}:", err)
+
 
 def get_semua_penugasan():
     """Mengambil daftar penugasan harian beserta jadwal operasional auto-expire."""
@@ -58,11 +94,26 @@ def get_semua_penugasan():
                 sched_map[t] = {}
             sched_map[t][sesi] = s_parsed
 
+        # Ambil laporan hari ini untuk mengecek status operasional
+        try:
+            today_reports_res = (
+                supabase.table("daily_reports")
+                .select("id, id_supir, trayek, bus, trip_sessions(*)")
+                .eq("tanggal", hari_ini)
+                .execute()
+            )
+            today_reports = today_reports_res.data or []
+        except Exception:
+            today_reports = []
+
         for p in penugasan_list:
             supir = user_map.get(p.get("id_supir"), {})
+            foto_supir = supir.get("foto_profil") or None
+            p["foto_profil"] = foto_supir
             p["users"] = {
                 "nama": supir.get("nama") or p.get("id_supir") or "-",
                 "email": supir.get("email", "-"),
+                "foto_profil": foto_supir,
             }
             trayek_key = (p.get("trayek") or "").strip().lower()
             t_sched = sched_map.get(trayek_key, {})
@@ -85,6 +136,54 @@ def get_semua_penugasan():
                 },
             )
 
+            # Hitung status operasional penugasan (MENUNGGU, BERJALAN, SELESAI)
+            matching_rep = next(
+                (
+                    r for r in today_reports
+                    if (r.get("id_supir") == p.get("id_supir") or r.get("id_supir") == supir.get("email"))
+                    and (r.get("trayek") == p.get("trayek") and r.get("bus") == p.get("nopol_kendaraan"))
+                ),
+                None,
+            )
+
+            tipe_clean = str(p.get("tipe_sesi") or "SEMUA").replace("'", "").strip().upper()
+            if tipe_clean not in ["PAGI", "SIANG", "SEMUA", "BATAL"]:
+                tipe_clean = "SEMUA"
+            p["tipe_sesi"] = tipe_clean
+
+            status_operasional = "MENUNGGU"
+            if tipe_clean == "BATAL":
+                status_operasional = "BATAL"
+            elif matching_rep:
+                sessions = matching_rep.get("trip_sessions", [])
+                pagi_done = any(
+                    (s.get("tipe_sesi") or "").upper() == "PAGI"
+                    and (s.get("jam_tiba_kantor") or s.get("km_tiba_kantor") is not None)
+                    for s in sessions
+                )
+                siang_done = any(
+                    (s.get("tipe_sesi") or "").upper() == "SIANG"
+                    and (s.get("jam_tiba_kantor") or s.get("km_tiba_kantor") is not None)
+                    for s in sessions
+                )
+                sudah_berangkat = any(bool(s.get("jam_berangkat_kantor")) for s in sessions)
+
+                if tipe_clean == "PAGI":
+                    is_selesai = pagi_done
+                elif tipe_clean == "SIANG":
+                    is_selesai = siang_done
+                else:
+                    is_selesai = pagi_done and siang_done
+
+                if is_selesai:
+                    status_operasional = "SELESAI"
+                elif sudah_berangkat:
+                    status_operasional = "BERJALAN"
+                else:
+                    status_operasional = "MENUNGGU"
+
+            p["status_operasional"] = status_operasional
+
         return {
             "pesan": "Daftar penugasan ditarik.",
             "total": len(penugasan_list),
@@ -99,16 +198,18 @@ def get_semua_penugasan():
 def create_penugasan_harian(data: PenugasanCreate):
     """Admin membuat penugasan kendaraan dan jadwal cut-off untuk supir pada hari tertentu."""
     try:
-        # Cek apakah supir ada
         user = supabase.table("users").select("id").eq("id", data.id_supir).execute()
         if not user.data:
             raise HTTPException(status_code=404, detail="Supir tidak ditemukan.")
 
-        # penugasan baru sesuai dengan kemauan admin
         nopol_clean = (data.nopol_kendaraan or "").strip().upper()
         jenis_clean = (data.jenis_kendaraan or "").strip().upper()
         trayek_clean = (data.trayek or "").strip().upper()
         kapasitas_clean = min(60, max(1, int(data.kapasitas_penumpang or 0))) if data.kapasitas_penumpang else 0
+
+        tipe_clean = str(data.tipe_sesi or "SEMUA").replace("'", "").strip().upper()
+        if tipe_clean not in ["PAGI", "SIANG", "SEMUA"]:
+            tipe_clean = "SEMUA"
 
         res = (
             supabase.table("penugasan")
@@ -120,96 +221,18 @@ def create_penugasan_harian(data: PenugasanCreate):
                     "jenis_kendaraan": jenis_clean,
                     "kapasitas_penumpang": kapasitas_clean,
                     "trayek": trayek_clean,
+                    "tipe_sesi": tipe_clean,
                     "created_at": datetime.now(timezone.utc).isoformat(),
                 }
             )
             .execute()
         )
-        pesan = "Penugasan dibuat."
 
-        # Sinkronisasi Jadwal Operasional Sesi Pagi jika disertakan
-        if data.jadwal_pagi and data.trayek:
-            form_pagi = str(
-                data.jadwal_pagi.get("jam_formulir_pengisian") or ""
-            ).strip()[:5]
-            keluar_pagi = str(
-                data.jadwal_pagi.get("batas_keluar_dishub") or ""
-            ).strip()[:5]
-            kembali_pagi = str(
-                data.jadwal_pagi.get("batas_kembali_dishub") or ""
-            ).strip()[:5]
-            val_keluar_pagi = f"{form_pagi}|{keluar_pagi}" if form_pagi else keluar_pagi
+        # Sinkronisasi jadwal operasional sesi pagi dan siang
+        _sync_schedule(data.trayek, "PAGI", data.jadwal_pagi)
+        _sync_schedule(data.trayek, "SIANG", data.jadwal_siang)
 
-            try:
-                cek_pagi = (
-                    supabase.table("schedules")
-                    .select("id")
-                    .ilike("trayek", data.trayek)
-                    .eq("tipe_sesi", "PAGI")
-                    .execute()
-                )
-                if cek_pagi.data:
-                    supabase.table("schedules").update(
-                        {
-                            "batas_keluar_dishub": val_keluar_pagi,
-                            "batas_tiba_start": kembali_pagi,
-                        }
-                    ).eq("id", cek_pagi.data[0]["id"]).execute()
-                else:
-                    supabase.table("schedules").insert(
-                        {
-                            "trayek": data.trayek,
-                            "tipe_sesi": "PAGI",
-                            "batas_keluar_dishub": val_keluar_pagi,
-                            "batas_tiba_start": kembali_pagi,
-                        }
-                    ).execute()
-            except Exception as e_pagi:
-                print("Warning simpan jadwal pagi:", e_pagi)
-
-        # Sinkronisasi Jadwal Operasional Sesi Siang jika disertakan
-        if data.jadwal_siang and data.trayek:
-            form_siang = str(
-                data.jadwal_siang.get("jam_formulir_pengisian") or ""
-            ).strip()[:5]
-            keluar_siang = str(
-                data.jadwal_siang.get("batas_keluar_dishub") or ""
-            ).strip()[:5]
-            kembali_siang = str(
-                data.jadwal_siang.get("batas_kembali_dishub") or ""
-            ).strip()[:5]
-            val_keluar_siang = (
-                f"{form_siang}|{keluar_siang}" if form_siang else keluar_siang
-            )
-
-            try:
-                cek_siang = (
-                    supabase.table("schedules")
-                    .select("id")
-                    .ilike("trayek", data.trayek)
-                    .eq("tipe_sesi", "SIANG")
-                    .execute()
-                )
-                if cek_siang.data:
-                    supabase.table("schedules").update(
-                        {
-                            "batas_keluar_dishub": val_keluar_siang,
-                            "batas_tiba_start": kembali_siang,
-                        }
-                    ).eq("id", cek_siang.data[0]["id"]).execute()
-                else:
-                    supabase.table("schedules").insert(
-                        {
-                            "trayek": data.trayek,
-                            "tipe_sesi": "SIANG",
-                            "batas_keluar_dishub": val_keluar_siang,
-                            "batas_tiba_start": kembali_siang,
-                        }
-                    ).execute()
-            except Exception as e_siang:
-                print("Warning simpan jadwal siang:", e_siang)
-
-        return {"pesan": pesan, "data": res.data[0]}
+        return {"pesan": "Penugasan dibuat.", "data": res.data[0]}
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -221,16 +244,47 @@ def create_penugasan_harian(data: PenugasanCreate):
 def update_penugasan_harian(id_penugasan: str, data: PenugasanUpdate):
     """Admin memperbarui data penugasan kendaraan dan jadwal cut-off untuk supir."""
     try:
-        # Cek apakah penugasan ada
         cek = supabase.table("penugasan").select("*").eq("id", id_penugasan).execute()
         if not cek.data:
             raise HTTPException(
                 status_code=404, detail="Data penugasan tidak ditemukan."
             )
 
+        penugasan_item = cek.data[0]
+        supir_id = penugasan_item.get("id_supir")
+        tgl = penugasan_item.get("tanggal")
+        target_trayek = penugasan_item.get("trayek")
+        target_bus = penugasan_item.get("nopol_kendaraan")
+
+        if supir_id and tgl:
+            try:
+                rep_query = (
+                    supabase.table("daily_reports")
+                    .select("id, trip_sessions(*)")
+                    .eq("id_supir", supir_id)
+                    .eq("tanggal", str(tgl))
+                )
+                if target_trayek:
+                    rep_query = rep_query.eq("trayek", target_trayek)
+                if target_bus:
+                    rep_query = rep_query.eq("bus", target_bus)
+
+                rep_check = rep_query.execute()
+                for rep in rep_check.data or []:
+                    sessions = rep.get("trip_sessions", [])
+                    has_departed = any(bool(s.get("jam_berangkat_kantor")) for s in sessions)
+                    if has_departed:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Penugasan tidak dapat diubah karena driver telah mengirim formulir keberangkatan operasional.",
+                        )
+            except HTTPException:
+                raise
+            except Exception as e_check:
+                print("Warning check running session on update:", e_check)
+
         update_payload = {}
         if data.id_supir is not None:
-            # Cek apakah supir baru valid
             user = (
                 supabase.table("users").select("id").eq("id", data.id_supir).execute()
             )
@@ -248,6 +302,10 @@ def update_penugasan_harian(id_penugasan: str, data: PenugasanUpdate):
             update_payload["kapasitas_penumpang"] = min(60, max(1, int(data.kapasitas_penumpang)))
         if data.trayek is not None:
             update_payload["trayek"] = str(data.trayek).strip().upper()
+        if data.tipe_sesi is not None:
+            tipe_clean = str(data.tipe_sesi).replace("'", "").strip().upper()
+            if tipe_clean in ["PAGI", "SIANG", "SEMUA", "BATAL"]:
+                update_payload["tipe_sesi"] = tipe_clean
 
         if update_payload:
             res = (
@@ -259,88 +317,10 @@ def update_penugasan_harian(id_penugasan: str, data: PenugasanUpdate):
         else:
             res = cek
 
-        # Sinkronisasi Jadwal Operasional Sesi Pagi jika disertakan
-        target_trayek = data.trayek or cek.data[0].get("trayek")
-        if data.jadwal_pagi and target_trayek:
-            form_pagi = str(
-                data.jadwal_pagi.get("jam_formulir_pengisian") or ""
-            ).strip()[:5]
-            keluar_pagi = str(
-                data.jadwal_pagi.get("batas_keluar_dishub") or ""
-            ).strip()[:5]
-            kembali_pagi = str(
-                data.jadwal_pagi.get("batas_kembali_dishub") or ""
-            ).strip()[:5]
-            val_keluar_pagi = f"{form_pagi}|{keluar_pagi}" if form_pagi else keluar_pagi
-
-            try:
-                cek_pagi = (
-                    supabase.table("schedules")
-                    .select("id")
-                    .ilike("trayek", target_trayek)
-                    .eq("tipe_sesi", "PAGI")
-                    .execute()
-                )
-                if cek_pagi.data:
-                    supabase.table("schedules").update(
-                        {
-                            "batas_keluar_dishub": val_keluar_pagi,
-                            "batas_tiba_start": kembali_pagi,
-                        }
-                    ).eq("id", cek_pagi.data[0]["id"]).execute()
-                else:
-                    supabase.table("schedules").insert(
-                        {
-                            "trayek": target_trayek,
-                            "tipe_sesi": "PAGI",
-                            "batas_keluar_dishub": val_keluar_pagi,
-                            "batas_tiba_start": kembali_pagi,
-                        }
-                    ).execute()
-            except Exception as e_pagi:
-                print("Warning update jadwal pagi:", e_pagi)
-
-        # Sinkronisasi Jadwal Operasional Sesi Siang jika disertakan
-        if data.jadwal_siang and target_trayek:
-            form_siang = str(
-                data.jadwal_siang.get("jam_formulir_pengisian") or ""
-            ).strip()[:5]
-            keluar_siang = str(
-                data.jadwal_siang.get("batas_keluar_dishub") or ""
-            ).strip()[:5]
-            kembali_siang = str(
-                data.jadwal_siang.get("batas_kembali_dishub") or ""
-            ).strip()[:5]
-            val_keluar_siang = (
-                f"{form_siang}|{keluar_siang}" if form_siang else keluar_siang
-            )
-
-            try:
-                cek_siang = (
-                    supabase.table("schedules")
-                    .select("id")
-                    .ilike("trayek", target_trayek)
-                    .eq("tipe_sesi", "SIANG")
-                    .execute()
-                )
-                if cek_siang.data:
-                    supabase.table("schedules").update(
-                        {
-                            "batas_keluar_dishub": val_keluar_siang,
-                            "batas_tiba_start": kembali_siang,
-                        }
-                    ).eq("id", cek_siang.data[0]["id"]).execute()
-                else:
-                    supabase.table("schedules").insert(
-                        {
-                            "trayek": target_trayek,
-                            "tipe_sesi": "SIANG",
-                            "batas_keluar_dishub": val_keluar_siang,
-                            "batas_tiba_start": kembali_siang,
-                        }
-                    ).execute()
-            except Exception as e_siang:
-                print("Warning update jadwal siang:", e_siang)
+        # Sinkronisasi jadwal operasional sesi pagi dan siang
+        active_trayek = data.trayek or penugasan_item.get("trayek")
+        _sync_schedule(active_trayek, "PAGI", data.jadwal_pagi)
+        _sync_schedule(active_trayek, "SIANG", data.jadwal_siang)
 
         updated_record = (
             res.data[0] if (res.data and len(res.data) > 0) else cek.data[0]
@@ -369,7 +349,35 @@ def delete_penugasan_harian(id_penugasan: str):
         target_trayek = penugasan_item.get("trayek")
         target_bus = penugasan_item.get("nopol_kendaraan")
 
-        # Cascade Cleanup: Cari daily_reports supir ini pada tanggal penugasan spesifik untuk trayek dan armada ini
+        # Validasi: jika driver telah mengirim formulir keberangkatan, tolak penghapusan
+        if id_supir and tanggal:
+            try:
+                rep_query = (
+                    supabase.table("daily_reports")
+                    .select("id, trip_sessions(*)")
+                    .eq("id_supir", id_supir)
+                    .eq("tanggal", str(tanggal))
+                )
+                if target_trayek:
+                    rep_query = rep_query.eq("trayek", target_trayek)
+                if target_bus:
+                    rep_query = rep_query.eq("bus", target_bus)
+
+                rep_check = rep_query.execute()
+                for rep in rep_check.data or []:
+                    sessions = rep.get("trip_sessions", [])
+                    has_departed = any(bool(s.get("jam_berangkat_kantor")) for s in sessions)
+                    if has_departed:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Penugasan tidak dapat dihapus karena driver telah memulai perjalanan operasional.",
+                        )
+            except HTTPException:
+                raise
+            except Exception as e_chk:
+                print("Warning check running on delete:", e_chk)
+
+        # Cascade cleanup: hapus daily_reports supir ini pada tanggal penugasan spesifik
         if id_supir and tanggal:
             try:
                 user_email = id_supir
@@ -398,15 +406,12 @@ def delete_penugasan_harian(id_penugasan: str):
                 for rep in reports:
                     rep_id = rep.get("id")
                     if rep_id:
-                        # 1. Hapus trip_sessions
                         supabase.table("trip_sessions").delete().eq(
                             "laporan_id", rep_id
                         ).execute()
-                        # 2. Hapus inspections
                         supabase.table("inspections").delete().eq(
                             "laporan_id", rep_id
                         ).execute()
-                        # 3. Hapus daily_reports
                         supabase.table("daily_reports").delete().eq(
                             "id", rep_id
                         ).execute()
@@ -417,6 +422,73 @@ def delete_penugasan_harian(id_penugasan: str):
         return {
             "pesan": "Penugasan dan laporan terkait berhasil dibersihkan.",
             "id": id_penugasan,
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+def batalkan_operasional_penugasan(id_penugasan: str, alasan: str = ""):
+    """Admin membatalkan sisa operasional supir di tengah hari tanpa menghapus histori laporan dinas."""
+    try:
+        cek = supabase.table("penugasan").select("*").eq("id", id_penugasan).execute()
+        if not cek.data:
+            raise HTTPException(
+                status_code=404, detail="Data penugasan tidak ditemukan."
+            )
+
+        penugasan_item = cek.data[0]
+        id_supir = penugasan_item.get("id_supir")
+        tanggal = penugasan_item.get("tanggal")
+        target_trayek = penugasan_item.get("trayek")
+        target_bus = penugasan_item.get("nopol_kendaraan")
+
+        # Cek apakah supir sudah menyelesaikan pagi
+        pagi_done = False
+        if id_supir and tanggal:
+            try:
+                rep_query = (
+                    supabase.table("daily_reports")
+                    .select("id, trip_sessions(*)")
+                    .eq("id_supir", id_supir)
+                    .eq("tanggal", str(tanggal))
+                )
+                if target_trayek:
+                    rep_query = rep_query.eq("trayek", target_trayek)
+                if target_bus:
+                    rep_query = rep_query.eq("bus", target_bus)
+
+                rep_check = rep_query.execute()
+                for rep in rep_check.data or []:
+                    sessions = rep.get("trip_sessions", [])
+                    if any(
+                        (s.get("tipe_sesi") or "").upper() == "PAGI"
+                        and (s.get("jam_tiba_kantor") or s.get("km_tiba_kantor") is not None)
+                        for s in sessions
+                    ):
+                        pagi_done = True
+                        break
+            except Exception as e_chk:
+                print("Warning check sessions on cancel:", e_chk)
+
+        # Jika sudah selesai pagi, set tipe_sesi = PAGI agar terhitung SELESAI
+        # Jika belum selesai pagi sama sekali, tandai BATAL
+        new_tipe = "PAGI" if pagi_done else "BATAL"
+
+        res = (
+            supabase.table("penugasan")
+            .update({"tipe_sesi": new_tipe})
+            .eq("id", id_penugasan)
+            .execute()
+        )
+
+        return {
+            "pesan": f"Operasional berhasil dibatalkan. Status sesi diatur ke {new_tipe}.",
+            "data": res.data[0] if res.data else cek.data[0],
+            "tipe_sesi": new_tipe,
         }
     except HTTPException as e:
         raise e

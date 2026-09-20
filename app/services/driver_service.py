@@ -1,7 +1,3 @@
-# ==============================================================================
-# SERVICE: DRIVER LIFECYCLE & MULTI-ASSIGNMENT RESOLUTION
-# ==============================================================================
-
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from app.db.database import supabase
@@ -9,21 +5,30 @@ from app.db.database import supabase
 WIB = timezone(timedelta(hours=7))
 
 
-def is_report_completed(report: Dict[str, Any]) -> bool:
-    """Memeriksa apakah laporan harian sudah menyelesaikan sesi PAGI dan SIANG."""
+# service: driver lifecycle & multi-assignment resolution
+def is_report_completed(report: Dict[str, Any], task_tipe_sesi: str = "SEMUA") -> bool:
+    """Memeriksa apakah laporan harian sudah menyelesaikan sesi yang ditugaskan."""
     if not report:
         return False
     sessions = report.get("trip_sessions") or []
     has_pagi = any(
         (s.get("tipe_sesi") or "").upper() == "PAGI"
-        and s.get("km_tiba_kantor") is not None
+        and (s.get("km_tiba_kantor") is not None or s.get("jam_tiba_kantor") is not None)
         for s in sessions
     )
     has_siang = any(
         (s.get("tipe_sesi") or "").upper() == "SIANG"
-        and s.get("km_tiba_kantor") is not None
+        and (s.get("km_tiba_kantor") is not None or s.get("jam_tiba_kantor") is not None)
         for s in sessions
     )
+
+    clean_tipe = str(task_tipe_sesi or "SEMUA").replace("'", "").strip().upper()
+    if clean_tipe == "PAGI":
+        return has_pagi
+    elif clean_tipe == "SIANG":
+        return has_siang
+    elif clean_tipe == "BATAL":
+        return True
     return has_pagi and has_siang
 
 
@@ -34,14 +39,13 @@ def get_driver_active_penugasan(
     Mencari penugasan aktif pengemudi hari ini:
     1. Ambil seluruh penugasan pengemudi pada tanggal terkait.
     2. Cocokkan dengan status penyelesaian laporan (daily_reports + trip_sessions).
-    3. Pilih penugasan pertama yang BELUM tuntas (baik belum ada laporan maupun sedang berjalan).
-    4. Jika SEMUA penugasan hari ini sudah tuntas, kembalikan penugasan terakhir
-       agar halaman pengemudi menampilkan status 'Operasional Selesai' untuk penugasan tersebut.
+    3. Pilih penugasan pertama yang belum tuntas.
+    4. Jika semua penugasan hari ini sudah tuntas, kembalikan penugasan terakhir.
     """
     if not tanggal:
         tanggal = datetime.now(WIB).strftime("%Y-%m-%d")
 
-    # 1. Cari data user pengemudi
+    # cari data user pengemudi
     user_res = (
         supabase.table("users")
         .select("id, email, nama")
@@ -53,7 +57,7 @@ def get_driver_active_penugasan(
 
     id_supir = user_res.data[0]["id"]
 
-    # 2. Ambil seluruh penugasan pengemudi pada tanggal terkait
+    # ambil seluruh penugasan pengemudi pada tanggal terkait
     penugasan_res = (
         supabase.table("penugasan")
         .select("*")
@@ -66,7 +70,7 @@ def get_driver_active_penugasan(
     if not penugasan_list:
         return {"active": None, "list": [], "id_supir": id_supir, "email_supir": email_supir}
 
-    # 3. Ambil seluruh laporan pengemudi pada tanggal terkait
+    # ambil seluruh laporan pengemudi pada tanggal terkait
     reports_res = (
         supabase.table("daily_reports")
         .select("*, trip_sessions(*), inspections(*)")
@@ -76,7 +80,7 @@ def get_driver_active_penugasan(
     )
     all_reports = reports_res.data or []
 
-    # 4. Cari penugasan yang belum tuntas
+    # cari penugasan yang belum tuntas
     active_task = None
     for task in penugasan_list:
         trayek = task.get("trayek")
@@ -88,17 +92,16 @@ def get_driver_active_penugasan(
         ]
 
         if not matching_reports:
-            # Belum ada laporan untuk penugasan ini -> Jadikan penugasan aktif
             active_task = task
             break
 
-        # Cek apakah ada laporan yang belum tuntas kedua sesi
-        incomplete_report = next((r for r in matching_reports if not is_report_completed(r)), None)
+        task_tipe = task.get("tipe_sesi") or "SEMUA"
+        incomplete_report = next((r for r in matching_reports if not is_report_completed(r, task_tipe)), None)
         if incomplete_report is not None:
             active_task = task
             break
 
-    # 5. Jika semua penugasan sudah tuntas, gunakan penugasan terakhir
+    # jika semua penugasan tuntas, gunakan penugasan terakhir
     if not active_task:
         active_task = penugasan_list[-1]
 
@@ -117,13 +120,11 @@ def get_driver_active_report(
     bus: Optional[str] = None,
     laporan_id: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """
-    Mengambil laporan harian spesifik atau laporan untuk penugasan aktif saat ini.
-    """
+    """Mengambil laporan harian spesifik atau laporan untuk penugasan aktif saat ini."""
     if not tanggal:
         tanggal = datetime.now(WIB).strftime("%Y-%m-%d")
 
-    # Jika ID laporan spesifik diminta
+    # jika ID laporan spesifik diminta
     if laporan_id:
         res = (
             supabase.table("daily_reports")
@@ -135,7 +136,7 @@ def get_driver_active_report(
             return res.data[0]
         return None
 
-    # Cari id_supir
+    # cari id_supir
     user_res = (
         supabase.table("users")
         .select("id")
@@ -144,7 +145,7 @@ def get_driver_active_report(
     )
     id_supir = user_res.data[0]["id"] if user_res.data else None
 
-    # Jika trayek dan bus tidak diberikan, cari berdasarkan penugasan aktif
+    # jika trayek dan bus tidak diberikan, cari berdasarkan penugasan aktif
     if not trayek or not bus:
         penugasan_info = get_driver_active_penugasan(email_supir, tanggal)
         active_task = penugasan_info.get("active")
@@ -153,7 +154,7 @@ def get_driver_active_report(
         trayek = active_task.get("trayek")
         bus = active_task.get("nopol_kendaraan")
 
-    # Query laporan berdasarkan supir, tanggal, trayek, dan bus
+    # query laporan berdasarkan supir, tanggal, trayek, dan bus
     query = (
         supabase.table("daily_reports")
         .select("*, trip_sessions(*), inspections(*)")
@@ -171,9 +172,16 @@ def get_driver_active_report(
     if not reports:
         return None
 
-    # Prioritaskan laporan yang belum tuntas
+    # prioritas 1: laporan yang sedang aktif berjalan
     for rep in reports:
-        if not is_report_completed(rep):
+        sessions = rep.get("trip_sessions") or []
+        if sessions and not is_report_completed(rep):
             return rep
 
+    # prioritas 2: laporan yang sudah tuntas penuh
+    for rep in reports:
+        if is_report_completed(rep):
+            return rep
+
+    # prioritas 3: fallback laporan teratas
     return reports[0]
