@@ -88,13 +88,21 @@ async def update_foto_profil(
 )
 def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
     try:
-        response = (
-            supabase.table("daily_reports")
-            .select("*, trip_sessions(*), inspections(*)")
-            .eq("id_supir", email_supir)
-            .order("tanggal", desc=True)
+        user_res = (
+            supabase.table("users")
+            .select("id")
+            .eq("email", email_supir)
             .execute()
         )
+        id_supir = user_res.data[0]["id"] if user_res.data else None
+
+        query = supabase.table("daily_reports").select("*, trip_sessions(*), inspections(*)")
+        if id_supir:
+            query = query.or_(f"id_supir.eq.{email_supir},id_supir.eq.{id_supir}")
+        else:
+            query = query.eq("id_supir", email_supir)
+
+        response = query.order("tanggal", desc=True).order("created_at", desc=True).execute()
         data_riwayat = response.data or []
         return {
             "pesan": "Riwayat perjalanan berhasil ditarik.",
