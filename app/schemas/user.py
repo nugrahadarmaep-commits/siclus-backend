@@ -39,6 +39,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     trayek: Optional[str] = None
     bus: Optional[str] = None
+    password_admin: Optional[str] = None
 
     @field_validator("password")
     @classmethod
@@ -58,4 +59,19 @@ class AdminProfileUpdate(BaseModel):
 class AdminDeleteDriverConfirm(BaseModel):
     email_admin: str = Field(..., description="Email administrator yang sedang login")
     password_admin: str = Field(..., description="Password administrator untuk konfirmasi keamanan")
+
+
+# pendaftaran akun staf admin baru oleh master admin
+class AdminStaffCreate(BaseModel):
+    nama_lengkap: str
+    email: EmailStr
+    password: str = Field(..., min_length=8, description="Password minimal 8 karakter")
+
+
+# pembaruan akun staf admin oleh master admin
+class AdminStaffUpdate(BaseModel):
+    nama_lengkap: Optional[str] = None
+    password: Optional[str] = None
+    password_admin: Optional[str] = None
+
 
