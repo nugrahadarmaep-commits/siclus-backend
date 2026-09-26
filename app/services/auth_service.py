@@ -42,6 +42,13 @@ def proses_login_supir(data_login: UserLogin):
         )
 
     db_user = db_user_list[0]
+ 
+    if str(db_user.get("role", "")).lower() == "nonaktif":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akun driver ini telah dinonaktifkan. Silakan hubungi Administrator Dishub.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if not verify_password(data_login.password, db_user["password"]):
         raise HTTPException(

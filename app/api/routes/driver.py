@@ -104,6 +104,49 @@ def get_riwayat_pengemudi(email_supir: str = Depends(verifikasi_pengemudi)):
 
         response = query.order("tanggal", desc=True).order("created_at", desc=True).execute()
         data_riwayat = response.data or []
+
+        # Ambil data penugasan supir untuk melengkapi jenis_kendaraan & kapasitas kendaraan
+        try:
+            penugasan_q = supabase.table("penugasan").select("*")
+            if id_supir:
+                penugasan_q = penugasan_q.or_(f"id_supir.eq.{email_supir},id_supir.eq.{id_supir}")
+            else:
+                penugasan_q = penugasan_q.eq("id_supir", email_supir)
+            penugasan_res = penugasan_q.execute()
+            penugasan_list = penugasan_res.data or []
+        except Exception as e_pen:
+            print("Warning fetch penugasan riwayat:", e_pen)
+            penugasan_list = []
+
+        for lap in data_riwayat:
+            lap_tgl = str(lap.get("tanggal") or "")
+            lap_trayek = (lap.get("trayek") or "").strip().upper()
+            lap_bus = (lap.get("bus") or "").strip().upper()
+
+            # Cocokkan penugasan spesifik berdasarkan tanggal dan rute/bus
+            matched_task = next(
+                (
+                    p for p in penugasan_list
+                    if str(p.get("tanggal") or "") == lap_tgl
+                    and (
+                        (p.get("trayek") or "").strip().upper() == lap_trayek
+                        or (p.get("nopol_kendaraan") or "").strip().upper() == lap_bus
+                    )
+                ),
+                next(
+                    (p for p in penugasan_list if str(p.get("tanggal") or "") == lap_tgl),
+                    None
+                )
+            )
+
+            jenis = (matched_task.get("jenis_kendaraan") if matched_task else None) or "BUS"
+            kapasitas = (matched_task.get("kapasitas_penumpang") if matched_task else None) or 50
+
+            lap["jenis_kendaraan"] = jenis
+            lap["kapasitas_penumpang"] = kapasitas
+            lap["kapasitas"] = kapasitas
+            lap["penugasan"] = matched_task
+
         return {
             "pesan": "Riwayat perjalanan berhasil ditarik.",
             "total_riwayat": len(data_riwayat),

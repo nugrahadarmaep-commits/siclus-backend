@@ -249,13 +249,18 @@ def delete_driver(
         )
 
     try:
-        response = supabase.table("users").delete().eq("id", user_id).execute()
+        response = (
+            supabase.table("users")
+            .update({"role": "nonaktif"})
+            .eq("id", user_id)
+            .execute()
+        )
         if not response.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Supir tidak ditemukan."
             )
         return {
-            "pesan": f"Akun driver {target_user.get('nama', user_id)} berhasil dihapus permanen."
+            "pesan": f"Akun driver {target_user.get('nama', user_id)} berhasil dinonaktifkan."
         }
     except HTTPException as e:
         raise e

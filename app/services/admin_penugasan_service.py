@@ -1,9 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from fastapi import HTTPException, status
 from app.db.database import supabase
 from app.schemas.penugasan import PenugasanCreate, PenugasanUpdate
 from app.services.admin_dashboard_service import _get_user_lookup_map
+
+WIB = timezone(timedelta(hours=7))
 
 
 def _sync_schedule(trayek: str, tipe_sesi: str, jadwal: Optional[dict]):
@@ -41,16 +43,10 @@ def _sync_schedule(trayek: str, tipe_sesi: str, jadwal: Optional[dict]):
 
 
 def get_semua_penugasan():
-    """Mengambil daftar penugasan harian beserta jadwal operasional auto-expire."""
+    """Mengambil daftar penugasan harian aktif (hari ini & masa depan) tanpa menghapus fisik database."""
     try:
         user_map = _get_user_lookup_map()
-        hari_ini = datetime.now().strftime("%Y-%m-%d")
-
-        try:
-            supabase.table("penugasan").delete().lt("tanggal", hari_ini).execute()
-        except Exception as e_clean:
-            print("Auto-clean penugasan lama warning:", e_clean)
-
+        hari_ini = datetime.now(WIB).strftime("%Y-%m-%d")
         response = (
             supabase.table("penugasan")
             .select("*")

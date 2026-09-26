@@ -115,12 +115,18 @@ def get_dashboard_metrics():
 
             # Cek tipe_sesi supir ini dari penugasan hari ini
             supir_tasks = [
-                p for p in penugasan_list
+                p
+                for p in penugasan_list
                 if _canonical_id(p.get("id_supir")) == supir_id
             ]
             task_tipe = "SEMUA"
             if supir_tasks:
-                task_tipe = str(supir_tasks[0].get("tipe_sesi") or "SEMUA").replace("'", "").strip().upper()
+                task_tipe = (
+                    str(supir_tasks[0].get("tipe_sesi") or "SEMUA")
+                    .replace("'", "")
+                    .strip()
+                    .upper()
+                )
 
             is_selesai = False
             if task_tipe == "PAGI":
@@ -234,7 +240,9 @@ def get_operasional_hari_ini():
                     None,
                 )
 
-            task_tipe = str(task.get("tipe_sesi") or "SEMUA").replace("'", "").strip().upper()
+            task_tipe = (
+                str(task.get("tipe_sesi") or "SEMUA").replace("'", "").strip().upper()
+            )
             if matching_rep:
                 matched_report_ids.add(matching_rep.get("id"))
                 item = {

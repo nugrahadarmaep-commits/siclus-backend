@@ -133,7 +133,21 @@ def get_driver_active_report(
             .execute()
         )
         if res.data and len(res.data) > 0:
-            return res.data[0]
+            rep = res.data[0]
+            try:
+                pen_q = supabase.table("penugasan").select("*").eq("tanggal", rep.get("tanggal")).execute()
+                if pen_q.data:
+                    p = next(
+                        (x for x in pen_q.data if x.get("trayek") == rep.get("trayek") or x.get("nopol_kendaraan") == rep.get("bus")),
+                        pen_q.data[0]
+                    )
+                    rep["jenis_kendaraan"] = p.get("jenis_kendaraan")
+                    rep["kapasitas_penumpang"] = p.get("kapasitas_penumpang")
+                    rep["kapasitas"] = p.get("kapasitas_penumpang")
+                    rep["penugasan"] = p
+            except Exception:
+                pass
+            return rep
         return None
 
     # cari id_supir
@@ -153,6 +167,8 @@ def get_driver_active_report(
             return None
         trayek = active_task.get("trayek")
         bus = active_task.get("nopol_kendaraan")
+    else:
+        active_task = None
 
     # query laporan berdasarkan supir, tanggal, trayek, dan bus
     query = (
@@ -172,16 +188,29 @@ def get_driver_active_report(
     if not reports:
         return None
 
+    selected_rep = None
     # prioritas 1: laporan yang sedang aktif berjalan
     for rep in reports:
         sessions = rep.get("trip_sessions") or []
         if sessions and not is_report_completed(rep):
-            return rep
+            selected_rep = rep
+            break
 
     # prioritas 2: laporan yang sudah tuntas penuh
-    for rep in reports:
-        if is_report_completed(rep):
-            return rep
+    if not selected_rep:
+        for rep in reports:
+            if is_report_completed(rep):
+                selected_rep = rep
+                break
 
     # prioritas 3: fallback laporan teratas
-    return reports[0]
+    if not selected_rep:
+        selected_rep = reports[0]
+
+    if selected_rep and active_task:
+        selected_rep["jenis_kendaraan"] = active_task.get("jenis_kendaraan")
+        selected_rep["kapasitas_penumpang"] = active_task.get("kapasitas_penumpang")
+        selected_rep["kapasitas"] = active_task.get("kapasitas_penumpang")
+        selected_rep["penugasan"] = active_task
+
+    return selected_rep
